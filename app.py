@@ -5,7 +5,8 @@ from flask import Flask, request, jsonify
 from config import VERIFY_TOKEN, PORT, DEBUG
 from database import init_db
 from whatsapp import parse_incoming_message, is_valid_message, mark_as_read
-from commands import handle_message, PENDING_STACKS
+from commands import handle_message
+from scheduler import PENDING_STACKS
 from scheduler import start_scheduler, stop_scheduler, is_stack_pending, clear_pending_stack
 from momo import wait_for_payment
 from flash import buy_sats
