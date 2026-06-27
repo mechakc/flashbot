@@ -312,9 +312,10 @@ def _is_valid_amount(text):
     return text.isdigit() and int(text) >= 100
 
 def _is_valid_time(text):
-    """Heure au format HH:MM."""
     parts = text.split(":")
     if len(parts) != 2:
         return False
     h, m = parts
-    return h.isdigit() and m.isdigit() and 0 <= int(h) <= 23 and 0 <= int(m) <= 59
+    if not h.isdigit() or not m.isdigit():
+        return False
+    return len(h) == 2 and 0 <= int(h) <= 23 and 0 <= int(m) <= 59

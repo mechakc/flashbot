@@ -2,7 +2,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv("flash.env")
+load_dotenv(".env")
 
 # WhatsApp
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
