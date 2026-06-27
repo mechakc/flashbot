@@ -18,7 +18,7 @@ def _get_auth_token():
 
     try:
         response = requests.post(
-            f"{COLLECTION_URL}/token/",
+            f"{MOMO_BASE_URL}/collection/token/",
             headers=headers
         )
         response.raise_for_status()
@@ -52,11 +52,11 @@ def request_to_pay(amount, phone_number, tx_id):
 
     payload = {
         "amount": str(amount),
-        "currency": "XOF",                      # FCFA zone UEMOA
-        "externalId": tx_id,                    # ton ID interne
+        "currency": "EUR",          # XOF ne marche pas en sandbox
+        "externalId": tx_id,
         "payer": {
             "partyIdType": "MSISDN",
-            "partyId": phone_number              # numéro MTN avec indicatif
+            "partyId": phone_number
         },
         "payerMessage": f"FlashBot DCA — {amount} FCFA",
         "payeeNote": "Achat automatique de sats Bitcoin"
@@ -74,7 +74,9 @@ def request_to_pay(amount, phone_number, tx_id):
             print(f"[MOMO] Request to Pay envoyée ✅ ref={momo_ref}")
             return {"success": True, "transaction_id": momo_ref}
         else:
-            print(f"[MOMO] Erreur Request to Pay : {response.status_code} — {response.text}")
+            print(f"[MOMO] Erreur Request to Pay : {response.status_code}")
+            print(f"[MOMO] Headers réponse : {dict(response.headers)}")
+            print(f"[MOMO] Body réponse : {response.text}")
             return {"success": False, "error": response.text}
 
     except requests.exceptions.RequestException as e:
