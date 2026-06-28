@@ -39,6 +39,10 @@ def request_to_pay(amount, phone_number, tx_id):
     if not token:
         return {"success": False, "error": "Token MoMo indisponible"}
 
+    # En sandbox, le seul numéro accepté est le numéro de test MTN
+    if MOMO_ENVIRONMENT == "sandbox":
+        phone_number = "46733123454"
+
     # Référence unique pour cette transaction
     momo_ref = str(uuid.uuid4())
 
@@ -53,7 +57,7 @@ def request_to_pay(amount, phone_number, tx_id):
     payload = {
         "amount": str(amount),
         "currency": "EUR" if MOMO_ENVIRONMENT == "sandbox" else "XOF",
-        "externalId": tx_id,
+        "externalId": str(uuid.uuid4()),  # UUID requis par MTN sandbox
         "payer": {
             "partyIdType": "MSISDN",
             "partyId": phone_number
@@ -100,8 +104,8 @@ def check_payment_status(momo_ref):
     }
 
     try:
-        response = requests.post(
-            f"{MOMO_BASE_URL}/collection/token/",
+        response = requests.get(
+            f"{COLLECTION_URL}/requesttopay/{momo_ref}",
             headers=headers
         )
         response.raise_for_status()
