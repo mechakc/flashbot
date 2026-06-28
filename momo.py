@@ -52,7 +52,7 @@ def request_to_pay(amount, phone_number, tx_id):
 
     payload = {
         "amount": str(amount),
-        "currency": "EUR",          # XOF ne marche pas en sandbox
+        "currency": "EUR" if MOMO_ENVIRONMENT == "sandbox" else "XOF",
         "externalId": tx_id,
         "payer": {
             "partyIdType": "MSISDN",
@@ -100,8 +100,8 @@ def check_payment_status(momo_ref):
     }
 
     try:
-        response = requests.get(
-            f"{COLLECTION_URL}/requesttopay/{momo_ref}",
+        response = requests.post(
+            f"{MOMO_BASE_URL}/collection/token/",
             headers=headers
         )
         response.raise_for_status()
