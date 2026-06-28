@@ -182,7 +182,7 @@ if __name__ == "__main__":
     start_scheduler()
 
     try:
-        app.run(host="0.0.0.0", port=PORT, debug=DEBUG)
+        app.run(host="0.0.0.0", port=PORT, debug=DEBUG, use_reloader=False)
     except KeyboardInterrupt:
         print("\n[APP] Arrêt demandé...")
         stop_scheduler()

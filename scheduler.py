@@ -9,7 +9,7 @@ from whatsapp import send_message
 from messages import msg_rappel_dca, msg_rapport_hebdo
 
 # Fuseau horaire Afrique de l'Ouest
-TIMEZONE = pytz.timezone("Africa/Abidjan")
+TIMEZONE = pytz.timezone("Africa/Porto-Novo")
 
 scheduler = BackgroundScheduler(timezone=TIMEZONE)
 
