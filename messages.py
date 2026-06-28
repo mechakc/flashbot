@@ -153,6 +153,7 @@ MSG_AIDE = """ℹ️ *Commandes FlashBot*
 - *REPRENDRE* — Réactiver les rappels
 - *MODIFIER* — Changer montant ou fréquence
 - *AIDE* — Afficher ce message
+- *PROFIL* — Voir ta configuration actuelle
 
 _Des questions ? Contacte l'équipe FlashBot._ ⚡"""
 
@@ -182,3 +183,23 @@ Depuis le début :
 - 🏦 Total : *{total_sats_global} sats*
 
 _Bonne semaine et continue à stacker !_ ⚡"""
+
+def msg_profil(user):
+    jours = {
+        "monday": "lundi", "tuesday": "mardi", "wednesday": "mercredi",
+        "thursday": "jeudi", "friday": "vendredi", "saturday": "samedi",
+        "sunday": "dimanche"
+    }
+    frequences = {"daily": "chaque jour", "weekly": "chaque semaine", "monthly": "chaque mois"}
+    jour = jours.get(user["schedule_day"], user["schedule_day"])
+    freq = frequences.get(user["frequency"], user["frequency"])
+    statut = "✅ Actif" if user["is_active"] else "⏸ En pause"
+
+    return f"""👤 *Ton profil FlashBot*
+    - 📱 MoMo : *{user["momo_number"]}*
+    - ⚡ Wallet : `{user["lightning_wallet"]}`
+    - 💰 Montant : *{user["dca_amount_fcfa"]} FCFA*
+    - 🔁 Fréquence : *{freq}*
+    - 📅 Jour : *{jour}*
+    - ⏰ Heure : *{user["schedule_time"]}*
+    - 🔆 Statut : *{statut}*"""

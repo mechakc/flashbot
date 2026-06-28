@@ -8,9 +8,6 @@ from messages import *
 from momo import request_to_pay
 from flash import buy_sats
 
-# --- États d'inscription (conversation multi-étapes) ---
-# On stocke en mémoire l'étape où en est chaque utilisateur
-# Format : { "2250701234567": { "step": "await_momo", ... } }
 PENDING_REGISTRATIONS = {}
 PENDING_MODIFICATIONS = {}
 
@@ -21,55 +18,40 @@ JOURS_MAP = {
 }
 
 def handle_message(from_number, text, raw_text):
-    """
-    Point d'entrée principal — reçoit chaque message et route vers la bonne fonction.
-    """
     user = get_user(from_number)
 
-    # Priorité 1 : si l'utilisateur est en cours d'inscription
     if from_number in PENDING_REGISTRATIONS:
         return handle_registration_step(from_number, text, raw_text)
 
-    # Priorité 2 : si l'utilisateur est en cours de modification
     if from_number in PENDING_MODIFICATIONS:
         return handle_modification_step(from_number, text, raw_text)
 
-    # Priorité 3 : commandes globales
     if text == "DEMARRER":
         return handle_demarrer(from_number, user)
-
     if text == "STACK":
         return handle_stack(from_number, user)
-
     if text == "SOLDE":
         return handle_solde(from_number, user)
-
     if text == "PAUSE":
         return handle_pause(from_number, user)
-
     if text == "REPRENDRE":
         return handle_reprendre(from_number, user)
-
     if text == "MODIFIER":
         return handle_modifier(from_number, user)
-
     if text == "AIDE":
         return send_message(from_number, MSG_AIDE)
+    if text == "PROFIL":
+        return handle_profil(from_number, user)
 
-    # Commande inconnue
     return send_message(from_number, MSG_COMMANDE_INCONNUE)
 
 
 # --- DEMARRER ---
 
 def handle_demarrer(from_number, user):
-    """Démarre le flux d'inscription."""
     if user:
-        # Déjà inscrit → proposer reconfiguration
-        send_message(from_number, f"Tu es déjà inscrit ! ⚡\n\nTape *MODIFIER* pour changer tes paramètres ou *AIDE* pour voir les commandes.")
+        send_message(from_number, "Tu es déjà inscrit ! ⚡\n\nTape *MODIFIER* pour changer tes paramètres ou *AIDE* pour voir les commandes.")
         return
-
-    # Nouvel utilisateur
     create_user(from_number)
     PENDING_REGISTRATIONS[from_number] = {"step": "await_momo"}
     send_message(from_number, MSG_BIENVENUE)
@@ -78,11 +60,9 @@ def handle_demarrer(from_number, user):
 # --- FLUX D'INSCRIPTION ---
 
 def handle_registration_step(from_number, text, raw_text):
-    """Gère les étapes d'inscription une par une."""
     state = PENDING_REGISTRATIONS[from_number]
     step = state["step"]
 
-    # Étape 1 : numéro MoMo
     if step == "await_momo":
         if not _is_valid_phone(raw_text):
             send_message(from_number, "⚠️ Numéro invalide. Entre ton numéro avec l'indicatif pays.\n(Ex: 2250701234567)")
@@ -91,7 +71,6 @@ def handle_registration_step(from_number, text, raw_text):
         PENDING_REGISTRATIONS[from_number]["step"] = "await_wallet"
         send_message(from_number, MSG_DEMANDE_WALLET)
 
-    # Étape 2 : wallet Lightning
     elif step == "await_wallet":
         if not _is_valid_wallet(raw_text):
             send_message(from_number, "⚠️ Adresse wallet invalide.\nExemple valide : ton_nom@walletofsatoshi.com")
@@ -100,7 +79,6 @@ def handle_registration_step(from_number, text, raw_text):
         PENDING_REGISTRATIONS[from_number]["step"] = "await_amount"
         send_message(from_number, MSG_DEMANDE_MONTANT)
 
-    # Étape 3 : montant FCFA
     elif step == "await_amount":
         if not _is_valid_amount(raw_text):
             send_message(from_number, "⚠️ Montant invalide. Entre un nombre entier (minimum 100).\nEx: 500")
@@ -109,7 +87,6 @@ def handle_registration_step(from_number, text, raw_text):
         PENDING_REGISTRATIONS[from_number]["step"] = "await_frequency"
         send_message(from_number, MSG_DEMANDE_FREQUENCE)
 
-    # Étape 4 : fréquence
     elif step == "await_frequency":
         if text not in ("DAILY", "WEEKLY", "MONTHLY"):
             send_message(from_number, "⚠️ Réponds avec DAILY, WEEKLY ou MONTHLY.")
@@ -119,15 +96,12 @@ def handle_registration_step(from_number, text, raw_text):
         PENDING_REGISTRATIONS[from_number]["step"] = "await_time"
         send_message(from_number, MSG_DEMANDE_HEURE)
 
-    # Étape 5 : heure
     elif step == "await_time":
         if not _is_valid_time(raw_text):
             send_message(from_number, "⚠️ Format invalide. Entre l'heure au format HH:MM.\nEx: 08:00")
             return
         update_user(from_number, schedule_time=raw_text)
         user = get_user(from_number)
-
-        # Si daily ou monthly, pas besoin du jour
         if user["frequency"] in ("daily", "monthly"):
             del PENDING_REGISTRATIONS[from_number]
             user = get_user(from_number)
@@ -136,7 +110,6 @@ def handle_registration_step(from_number, text, raw_text):
             PENDING_REGISTRATIONS[from_number]["step"] = "await_day"
             send_message(from_number, MSG_DEMANDE_JOUR)
 
-    # Étape 6 : jour de la semaine (weekly seulement)
     elif step == "await_day":
         if text not in JOURS_MAP:
             send_message(from_number, "⚠️ Réponds avec LUNDI, MARDI, MERCREDI, JEUDI, VENDREDI, SAMEDI ou DIMANCHE.")
@@ -150,11 +123,9 @@ def handle_registration_step(from_number, text, raw_text):
 # --- STACK ---
 
 def handle_stack(from_number, user):
-    """Déclenche un achat DCA immédiat."""
     if not user:
         send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
         return
-
     if not user["is_active"]:
         send_message(from_number, "Ton DCA est en pause. Tape *REPRENDRE* pour le réactiver.")
         return
@@ -162,10 +133,8 @@ def handle_stack(from_number, user):
     amount = user["dca_amount_fcfa"]
     send_message(from_number, msg_paiement_envoye(amount))
 
-    # Créer une transaction en attente
     tx_id = create_transaction(user["id"], amount)
 
-    # Appel MoMo Request to Pay
     momo_result = request_to_pay(
         amount=amount,
         phone_number=user["momo_number"],
@@ -180,7 +149,6 @@ def handle_stack(from_number, user):
     momo_tx_id = momo_result.get("transaction_id", "")
     update_transaction(tx_id, momo_tx_id=momo_tx_id, status="momo_pending")
 
-    # Achat sats sur Flash
     flash_result = buy_sats(amount, user["lightning_wallet"])
 
     if not flash_result:
@@ -191,7 +159,6 @@ def handle_stack(from_number, user):
     sats_received = flash_result.get("sats", 0)
     flash_tx_id = flash_result.get("tx_id", "")
 
-    # Mise à jour transaction + total sats utilisateur
     update_transaction(tx_id, sats_received=sats_received, flash_tx_id=flash_tx_id, status="success")
     new_total = (user["total_sats"] or 0) + sats_received
     update_user(from_number, total_sats=new_total)
@@ -242,6 +209,7 @@ def handle_modifier(from_number, user):
     PENDING_MODIFICATIONS[from_number] = {"step": "await_choice"}
     send_message(from_number, MSG_MODIFIER)
 
+
 def handle_modification_step(from_number, text, raw_text):
     state = PENDING_MODIFICATIONS[from_number]
     step = state["step"]
@@ -276,8 +244,29 @@ def handle_modification_step(from_number, text, raw_text):
             return
         freq_map = {"DAILY": "daily", "WEEKLY": "weekly", "MONTHLY": "monthly"}
         update_user(from_number, frequency=freq_map[text])
+        PENDING_MODIFICATIONS[from_number]["step"] = "await_new_time"
+        send_message(from_number, "✅ Fréquence mise à jour !\n\n⏰ *À quelle heure veux-tu ton rappel ?*\n(Ex: 08:00, 12:30 — format HH:MM)")
+
+    elif step == "await_new_time":
+        if not _is_valid_time(raw_text):
+            send_message(from_number, "⚠️ Format invalide. Entre l'heure au format HH:MM.\nEx: 08:00")
+            return
+        update_user(from_number, schedule_time=raw_text)
+        user = get_user(from_number)
+        if user["frequency"] == "weekly":
+            PENDING_MODIFICATIONS[from_number]["step"] = "await_new_day"
+            send_message(from_number, MSG_DEMANDE_JOUR)
+        else:
+            del PENDING_MODIFICATIONS[from_number]
+            send_message(from_number, f"✅ Heure mise à jour : *{raw_text}*.")
+
+    elif step == "await_new_day":
+        if text not in JOURS_MAP:
+            send_message(from_number, "⚠️ Réponds avec LUNDI, MARDI, MERCREDI, JEUDI, VENDREDI, SAMEDI ou DIMANCHE.")
+            return
+        update_user(from_number, schedule_day=JOURS_MAP[text])
         del PENDING_MODIFICATIONS[from_number]
-        send_message(from_number, f"✅ Fréquence mise à jour : *{raw_text}*.")
+        send_message(from_number, f"✅ Jour mis à jour : *{raw_text}*.")
 
     elif step == "await_new_wallet":
         if not _is_valid_wallet(raw_text):
@@ -296,19 +285,23 @@ def handle_modification_step(from_number, text, raw_text):
         send_message(from_number, f"✅ Numéro MoMo mis à jour : *{raw_text}*.")
 
 
+# --- PROFIL ---
+def handle_profil(from_number, user):
+    if not user:
+        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
+        return
+    from messages import msg_profil
+    send_message(from_number, msg_profil(dict(user)))
 # --- Validations ---
 
 def _is_valid_phone(text):
-    """Numéro international : commence par un chiffre, 10-15 chiffres."""
     return text.isdigit() and 10 <= len(text) <= 15
 
 def _is_valid_wallet(text):
-    """Adresse Lightning : doit contenir @ ou commencer par lnurl/ln."""
     text_lower = text.lower()
     return "@" in text_lower or text_lower.startswith("lnurl") or text_lower.startswith("ln")
 
 def _is_valid_amount(text):
-    """Montant : entier >= 100."""
     return text.isdigit() and int(text) >= 100
 
 def _is_valid_time(text):
