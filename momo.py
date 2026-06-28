@@ -62,8 +62,8 @@ def request_to_pay(amount, phone_number, tx_id):
             "partyIdType": "MSISDN",
             "partyId": phone_number
         },
-        "payerMessage": f"FlashBot DCA — {amount} FCFA",
-        "payeeNote": "Achat automatique de sats Bitcoin"
+        "payerMessage": f"FlashBot DCA {amount} FCFA",
+        "payeeNote": "Achat sats Bitcoin"
     }
 
     try:

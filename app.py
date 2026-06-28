@@ -16,15 +16,15 @@ from messages import msg_achat_reussi, msg_paiement_echoue
 
 app = Flask(__name__)
 
+# Verrou anti-doublon : évite de traiter 2 STACK simultanés pour le même user
+PROCESSING_STACKS = set()
+PROCESSED_MESSAGE_IDS = set()  # évite de traiter le même message Meta deux fois
+
 
 # --- Webhook Meta WhatsApp ---
 
 @app.route("/webhook", methods=["GET"])
 def webhook_verify():
-    """
-    Vérification du webhook par Meta.
-    Meta envoie un GET avec hub.challenge — on doit répondre avec ce challenge.
-    """
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
     challenge = request.args.get("hub.challenge")
@@ -39,37 +39,42 @@ def webhook_verify():
 
 @app.route("/webhook", methods=["POST"])
 def webhook_receive():
-    """
-    Réception des messages WhatsApp entrants.
-    Meta envoie un POST pour chaque message reçu.
-    """
     data = request.get_json()
 
     if not data:
         return jsonify({"status": "no data"}), 400
 
-    # Parser le message entrant
     parsed = parse_incoming_message(data)
 
     if not is_valid_message(parsed):
-        # Pas un message texte exploitable — on répond 200 quand même
-        # (Meta renvoie si on ne répond pas 200)
         return jsonify({"status": "ignored"}), 200
 
     from_number = parsed["from"]
-    text = parsed["text"]            # majuscules
-    raw_text = parsed["raw_text"]    # brut
+    text = parsed["text"]
+    raw_text = parsed["raw_text"]
     message_id = parsed["message_id"]
 
-    # Marquer comme lu immédiatement
-    mark_as_read(message_id)
+    # Dédupliquer — Meta renvoie parfois le même message plusieurs fois
+    if message_id in PROCESSED_MESSAGE_IDS:
+        print(f"[WEBHOOK] Message {message_id} déjà traité, ignoré")
+        return jsonify({"status": "duplicate"}), 200
+    PROCESSED_MESSAGE_IDS.add(message_id)
+    # Garder max 1000 IDs en mémoire
+    if len(PROCESSED_MESSAGE_IDS) > 1000:
+        PROCESSED_MESSAGE_IDS.clear()
 
+    mark_as_read(message_id)
     print(f"[WEBHOOK] Message reçu de {from_number} : '{text}'")
 
-    # Si c'est un STACK → traitement spécial avec MoMo dans un thread séparé
     if text == "STACK":
         user = get_user(from_number)
         if user and user["is_active"]:
+            # Anti-doublon : si déjà en cours de traitement, ignorer
+            if from_number in PROCESSING_STACKS:
+                print(f"[WEBHOOK] STACK déjà en cours pour {from_number}, ignoré")
+                return jsonify({"status": "already_processing"}), 200
+
+            PROCESSING_STACKS.add(from_number)
             threading.Thread(
                 target=_process_stack_payment,
                 args=(from_number, user),
@@ -77,30 +82,21 @@ def webhook_receive():
             ).start()
             return jsonify({"status": "stack_processing"}), 200
 
-    # Tous les autres messages → handler normal
     handle_message(from_number, text, raw_text)
-
     return jsonify({"status": "ok"}), 200
 
 
 # --- Traitement paiement STACK dans un thread ---
 
 def _process_stack_payment(from_number, user):
-    """
-    Traite le paiement MoMo + achat Flash dans un thread séparé.
-    Nécessaire pour ne pas bloquer le webhook (Meta timeout à 20s).
-    """
     from momo import request_to_pay
 
     amount = user["dca_amount_fcfa"]
 
-    # Envoyer message d'attente
     send_message(from_number, f"📲 Demande de paiement envoyée !\n\nVérifie ton téléphone MTN MoMo pour *{amount} FCFA* et entre ton PIN. J'attends... ⏳")
 
-    # Créer transaction en base
     tx_id = create_transaction(user["id"], amount)
 
-    # Request to Pay MoMo
     momo_result = request_to_pay(
         amount=amount,
         phone_number=user["momo_number"],
@@ -110,50 +106,48 @@ def _process_stack_payment(from_number, user):
     if not momo_result["success"]:
         update_transaction(tx_id, status="failed")
         send_message(from_number, msg_paiement_echoue(amount))
+        PROCESSING_STACKS.discard(from_number)
         return
 
     momo_ref = momo_result["transaction_id"]
     update_transaction(tx_id, momo_tx_id=momo_ref, status="momo_pending")
 
-    # Polling statut paiement (max 50 secondes)
     payment_confirmed = wait_for_payment(momo_ref, max_attempts=10, delay=5)
 
     if not payment_confirmed:
         update_transaction(tx_id, status="failed")
         send_message(from_number, msg_paiement_echoue(amount))
+        PROCESSING_STACKS.discard(from_number)
         return
 
     update_transaction(tx_id, status="momo_success")
 
-    # Achat sats sur Flash
     flash_result = buy_sats(amount, user["lightning_wallet"])
 
     if not flash_result:
         update_transaction(tx_id, status="flash_failed")
         send_message(from_number, f"❌ Paiement MoMo reçu mais erreur côté Flash. Contacte le support. (ref: {tx_id})")
+        PROCESSING_STACKS.discard(from_number)
         return
 
     sats_received = flash_result.get("sats", 0)
     flash_tx_id = flash_result.get("tx_id", "")
 
-    # Mise à jour base de données
     update_transaction(tx_id, sats_received=sats_received, flash_tx_id=flash_tx_id, status="success")
     new_total = (user["total_sats"] or 0) + sats_received
     update_user(from_number, total_sats=new_total)
 
-    # Nettoyer le pending stack
     clear_pending_stack(from_number)
+    PROCESSING_STACKS.discard(from_number)
 
-    # Confirmation finale
     send_message(from_number, msg_achat_reussi(sats_received, new_total, amount))
     print(f"[STACK] Transaction complète ✅ — {from_number} — {sats_received} sats")
 
 
-# --- Route de santé ---
+# --- Routes ---
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Vérifie que le serveur tourne — utile pour Railway/Render."""
     return jsonify({
         "status": "ok",
         "service": "FlashBot DCA",
@@ -174,13 +168,8 @@ def index():
 
 if __name__ == "__main__":
     print("⚡ Démarrage FlashBot DCA...")
-
-    # Initialiser la base de données
     init_db()
-
-    # Démarrer le scheduler
     start_scheduler()
-
     try:
         app.run(host="0.0.0.0", port=PORT, debug=DEBUG, use_reloader=False)
     except KeyboardInterrupt:
