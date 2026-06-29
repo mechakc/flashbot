@@ -3,25 +3,21 @@ import threading
 from flask import Flask, request, jsonify
 
 from config import VERIFY_TOKEN, PORT, DEBUG
-from database import init_db
+from database import init_db, get_payment_by_hash, update_payment, get_tontine_by_id
+from database import get_current_round, count_paid_in_round, get_members
 from whatsapp import parse_incoming_message, is_valid_message, mark_as_read
 from commands import handle_message
-from scheduler import PENDING_STACKS
-from scheduler import start_scheduler, stop_scheduler, is_stack_pending, clear_pending_stack
-from momo import wait_for_payment
-from flash import buy_sats
-from database import get_user, update_user, create_transaction, update_transaction
+from scheduler import start_scheduler, stop_scheduler, _confirm_payment
 from whatsapp import send_message
-from messages import msg_achat_reussi, msg_paiement_echoue
 
 app = Flask(__name__)
 
-# Verrou anti-doublon : évite de traiter 2 STACK simultanés pour le même user
-PROCESSING_STACKS = set()
-PROCESSED_MESSAGE_IDS = set()  # évite de traiter le même message Meta deux fois
+PROCESSED_MESSAGE_IDS = set()
 
 
-# --- Webhook Meta WhatsApp ---
+# ==============================================================
+# WEBHOOK WHATSAPP
+# ==============================================================
 
 @app.route("/webhook", methods=["GET"])
 def webhook_verify():
@@ -32,20 +28,16 @@ def webhook_verify():
     if mode == "subscribe" and token == VERIFY_TOKEN:
         print("[WEBHOOK] Vérification réussie ✅")
         return challenge, 200
-    else:
-        print("[WEBHOOK] Vérification échouée ❌")
-        return "Forbidden", 403
+    return "Forbidden", 403
 
 
 @app.route("/webhook", methods=["POST"])
 def webhook_receive():
     data = request.get_json()
-
     if not data:
         return jsonify({"status": "no data"}), 400
 
     parsed = parse_incoming_message(data)
-
     if not is_valid_message(parsed):
         return jsonify({"status": "ignored"}), 200
 
@@ -54,125 +46,111 @@ def webhook_receive():
     raw_text = parsed["raw_text"]
     message_id = parsed["message_id"]
 
-    # Dédupliquer — Meta renvoie parfois le même message plusieurs fois
+    # Déduplication
     if message_id in PROCESSED_MESSAGE_IDS:
-        print(f"[WEBHOOK] Message {message_id} déjà traité, ignoré")
         return jsonify({"status": "duplicate"}), 200
     PROCESSED_MESSAGE_IDS.add(message_id)
-    # Garder max 1000 IDs en mémoire
     if len(PROCESSED_MESSAGE_IDS) > 1000:
         PROCESSED_MESSAGE_IDS.clear()
 
     mark_as_read(message_id)
-    print(f"[WEBHOOK] Message reçu de {from_number} : '{text}'")
+    print(f"[WEBHOOK] Message de {from_number} : '{text}'")
 
-    if text == "STACK":
-        user = get_user(from_number)
-        if user and user["is_active"]:
-            # Anti-doublon : si déjà en cours de traitement, ignorer
-            if from_number in PROCESSING_STACKS:
-                print(f"[WEBHOOK] STACK déjà en cours pour {from_number}, ignoré")
-                return jsonify({"status": "already_processing"}), 200
+    threading.Thread(
+        target=handle_message,
+        args=(from_number, text, raw_text),
+        daemon=True
+    ).start()
 
-            PROCESSING_STACKS.add(from_number)
-            threading.Thread(
-                target=_process_stack_payment,
-                args=(from_number, user),
-                daemon=True
-            ).start()
-            return jsonify({"status": "stack_processing"}), 200
-
-    handle_message(from_number, text, raw_text)
     return jsonify({"status": "ok"}), 200
 
 
-# --- Traitement paiement STACK dans un thread ---
+# ==============================================================
+# WEBHOOK LNBITS — confirmation paiement
+# ==============================================================
 
-def _process_stack_payment(from_number, user):
-    from momo import request_to_pay
+@app.route("/lnbits/webhook", methods=["POST"])
+def lnbits_webhook():
+    """
+    LNbits appelle cette route automatiquement quand une invoice est payée.
+    Body : { "payment_hash": "...", "amount": ..., ... }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "no data"}), 400
 
-    amount = user["dca_amount_fcfa"]
+    payment_hash = data.get("payment_hash")
+    if not payment_hash:
+        return jsonify({"status": "no hash"}), 400
 
-    send_message(from_number, f"📲 Demande de paiement envoyée !\n\nVérifie ton téléphone MTN MoMo pour *{amount} FCFA* et entre ton PIN. J'attends... ⏳")
+    print(f"[LNBITS WEBHOOK] Paiement reçu — hash: {payment_hash[:16]}...")
 
-    tx_id = create_transaction(user["id"], amount)
+    # Trouver le paiement en DB
+    payment = get_payment_by_hash(payment_hash)
+    if not payment:
+        print(f"[LNBITS WEBHOOK] Paiement introuvable en DB")
+        return jsonify({"status": "not found"}), 200
 
-    momo_result = request_to_pay(
-        amount=amount,
-        phone_number=user["momo_number"],
-        tx_id=str(tx_id)
-    )
+    if payment["status"] == "paid":
+        print(f"[LNBITS WEBHOOK] Déjà traité")
+        return jsonify({"status": "already_paid"}), 200
 
-    if not momo_result["success"]:
-        update_transaction(tx_id, status="failed")
-        send_message(from_number, msg_paiement_echoue(amount))
-        PROCESSING_STACKS.discard(from_number)
-        return
+    # Trouver le round et la tontine
+    from database import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tontine_rounds WHERE id = ?", (payment["round_id"],))
+    current_round = cursor.fetchone()
+    conn.close()
 
-    momo_ref = momo_result["transaction_id"]
-    update_transaction(tx_id, momo_tx_id=momo_ref, status="momo_pending")
+    if not current_round:
+        return jsonify({"status": "round not found"}), 200
 
-    payment_confirmed = wait_for_payment(momo_ref, max_attempts=10, delay=5)
+    tontine_id = current_round["tontine_id"]
 
-    if not payment_confirmed:
-        update_transaction(tx_id, status="failed")
-        send_message(from_number, msg_paiement_echoue(amount))
-        PROCESSING_STACKS.discard(from_number)
-        return
+    # Traiter le paiement dans un thread
+    threading.Thread(
+        target=_confirm_payment,
+        args=(tontine_id, current_round, payment),
+        daemon=True
+    ).start()
 
-    update_transaction(tx_id, status="momo_success")
-
-    flash_result = buy_sats(amount, user["lightning_wallet"])
-
-    if not flash_result:
-        update_transaction(tx_id, status="flash_failed")
-        send_message(from_number, f"❌ Paiement MoMo reçu mais erreur côté Flash. Contacte le support. (ref: {tx_id})")
-        PROCESSING_STACKS.discard(from_number)
-        return
-
-    sats_received = flash_result.get("sats", 0)
-    flash_tx_id = flash_result.get("tx_id", "")
-
-    update_transaction(tx_id, sats_received=sats_received, flash_tx_id=flash_tx_id, status="success")
-    new_total = (user["total_sats"] or 0) + sats_received
-    update_user(from_number, total_sats=new_total)
-
-    clear_pending_stack(from_number)
-    PROCESSING_STACKS.discard(from_number)
-
-    send_message(from_number, msg_achat_reussi(sats_received, new_total, amount))
-    print(f"[STACK] Transaction complète ✅ — {from_number} — {sats_received} sats")
+    return jsonify({"status": "ok"}), 200
 
 
-# --- Routes ---
+# ==============================================================
+# ROUTES UTILITAIRES
+# ==============================================================
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
         "status": "ok",
-        "service": "FlashBot DCA",
-        "pending_stacks": len(PENDING_STACKS)
+        "service": "TontineBot",
+        "version": "1.0"
     }), 200
 
 
 @app.route("/", methods=["GET"])
 def index():
     return jsonify({
-        "service": "FlashBot DCA ⚡",
+        "service": "TontineBot ⚡",
         "status": "running",
         "version": "1.0"
     }), 200
 
 
-# --- Démarrage ---
+# ==============================================================
+# DÉMARRAGE
+# ==============================================================
 
 if __name__ == "__main__":
-    print("⚡ Démarrage FlashBot DCA...")
+    print("⚡ Démarrage TontineBot...")
     init_db()
     start_scheduler()
     try:
         app.run(host="0.0.0.0", port=PORT, debug=DEBUG, use_reloader=False)
     except KeyboardInterrupt:
-        print("\n[APP] Arrêt demandé...")
+        print("\n[APP] Arrêt...")
         stop_scheduler()
-        print("[APP] FlashBot arrêté proprement ✅")
+        print("[APP] TontineBot arrêté ✅")

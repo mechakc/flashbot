@@ -1,314 +1,440 @@
 # commands.py
+import random
+import string
 from database import (
-    get_user, create_user, update_user,
-    create_transaction, update_transaction, get_user_stats
+    create_tontine, get_tontine_by_code, get_tontine_by_id,
+    get_tontine_by_member, update_tontine,
+    add_member, get_members, get_member, count_members,
+    get_member_by_id, get_all_rounds, get_current_round,
+    get_payments_for_round, count_paid_in_round
 )
 from whatsapp import send_message
 from messages import *
-from momo import request_to_pay
-from flash import buy_sats
 
-PENDING_REGISTRATIONS = {}
-PENDING_MODIFICATIONS = {}
+# États en attente de réponse
+# { "2290123456": {"step": "await_wallet", "tontine_id": 3} }
+PENDING_JOINS = {}
 
-JOURS_MAP = {
-    "LUNDI": "monday", "MARDI": "tuesday", "MERCREDI": "wednesday",
-    "JEUDI": "thursday", "VENDREDI": "friday", "SAMEDI": "saturday",
-    "DIMANCHE": "sunday"
-}
+# { "2290123456": {"step": "await_name", ...} }
+PENDING_CREATES = {}
+
 
 def handle_message(from_number, text, raw_text):
-    user = get_user(from_number)
 
-    if from_number in PENDING_REGISTRATIONS:
-        return handle_registration_step(from_number, text, raw_text)
+    # Priorité aux états en cours
+    if from_number in PENDING_CREATES:
+        return handle_create_step(from_number, text, raw_text)
 
-    if from_number in PENDING_MODIFICATIONS:
-        return handle_modification_step(from_number, text, raw_text)
+    if from_number in PENDING_JOINS:
+        return handle_join_step(from_number, text, raw_text)
 
-    if text == "DEMARRER":
-        return handle_demarrer(from_number, user)
-    if text == "STACK":
-        return handle_stack(from_number, user)
-    if text == "SOLDE":
-        return handle_solde(from_number, user)
-    if text == "PAUSE":
-        return handle_pause(from_number, user)
-    if text == "REPRENDRE":
-        return handle_reprendre(from_number, user)
-    if text == "MODIFIER":
-        return handle_modifier(from_number, user)
+    # Commandes principales
     if text == "AIDE":
         return send_message(from_number, MSG_AIDE)
-    if text == "PROFIL":
-        return handle_profil(from_number, user)
+
+    if text.startswith("CREER"):
+        return handle_creer(from_number, text, raw_text)
+
+    if text.startswith("REJOINDRE"):
+        return handle_rejoindre(from_number, text, raw_text)
+
+    if text == "TONTINE":
+        return handle_tontine(from_number)
+
+    if text == "MEMBRES":
+        return handle_membres(from_number)
+
+    if text == "HISTORIQUE":
+        return handle_historique(from_number)
 
     return send_message(from_number, MSG_COMMANDE_INCONNUE)
 
 
-# --- DEMARRER ---
+# ==============================================================
+# CREER
+# ==============================================================
 
-def handle_demarrer(from_number, user):
-    if user:
-        send_message(from_number, "Tu es déjà inscrit ! ⚡\n\nTape *MODIFIER* pour changer tes paramètres ou *AIDE* pour voir les commandes.")
+def handle_creer(from_number, text, raw_text):
+    """
+    Syntaxe : CREER NOM MONTANT MEMBRES
+    Ex : CREER MaFamille 5000 3
+    """
+    # Vérifier si déjà dans une tontine active
+    existing = get_tontine_by_member(from_number)
+    if existing:
+        send_message(from_number, f"⚠️ Tu es déjà dans une tontine active (*{existing['name']}*).\n\nTape *TONTINE* pour voir son statut.")
         return
-    create_user(from_number)
-    PENDING_REGISTRATIONS[from_number] = {"step": "await_momo"}
-    send_message(from_number, MSG_BIENVENUE)
+
+    parts = raw_text.strip().split()
+
+    # Si la commande est complète : CREER NOM MONTANT MEMBRES
+    if len(parts) == 4:
+        _, name, amount_str, members_str = parts
+        error = _validate_creer(name, amount_str, members_str)
+        if error:
+            send_message(from_number, error)
+            return
+        _do_create_tontine(from_number, name, int(amount_str), int(members_str))
+        return
+
+    # Sinon flux conversationnel
+    PENDING_CREATES[from_number] = {"step": "await_name"}
+    send_message(from_number, MSG_CREER_NOM)
 
 
-# --- FLUX D'INSCRIPTION ---
-
-def handle_registration_step(from_number, text, raw_text):
-    state = PENDING_REGISTRATIONS[from_number]
+def handle_create_step(from_number, text, raw_text):
+    state = PENDING_CREATES[from_number]
     step = state["step"]
 
-    if step == "await_momo":
-        if not _is_valid_phone(raw_text):
-            send_message(from_number, "⚠️ Numéro invalide. Entre ton numéro avec l'indicatif pays.\n(Ex: 2250701234567)")
+    if step == "await_name":
+        name = raw_text.strip()
+        if len(name) < 2 or len(name) > 30:
+            send_message(from_number, "⚠️ Le nom doit faire entre 2 et 30 caractères.")
             return
-        update_user(from_number, momo_number=raw_text)
-        PENDING_REGISTRATIONS[from_number]["step"] = "await_wallet"
-        send_message(from_number, MSG_DEMANDE_WALLET)
-
-    elif step == "await_wallet":
-        if not _is_valid_wallet(raw_text):
-            send_message(from_number, "⚠️ Adresse wallet invalide.\nExemple valide : ton_nom@walletofsatoshi.com")
-            return
-        update_user(from_number, lightning_wallet=raw_text)
-        PENDING_REGISTRATIONS[from_number]["step"] = "await_amount"
-        send_message(from_number, MSG_DEMANDE_MONTANT)
+        PENDING_CREATES[from_number]["name"] = name
+        PENDING_CREATES[from_number]["step"] = "await_amount"
+        send_message(from_number, MSG_CREER_MONTANT)
 
     elif step == "await_amount":
-        if not _is_valid_amount(raw_text):
-            send_message(from_number, "⚠️ Montant invalide. Entre un nombre entier (minimum 100).\nEx: 500")
+        if not raw_text.isdigit() or int(raw_text) < 100:
+            send_message(from_number, "⚠️ Montant invalide. Minimum 100 sats.\nEx: 5000")
             return
-        update_user(from_number, dca_amount_fcfa=int(raw_text))
-        PENDING_REGISTRATIONS[from_number]["step"] = "await_frequency"
-        send_message(from_number, MSG_DEMANDE_FREQUENCE)
+        PENDING_CREATES[from_number]["amount"] = int(raw_text)
+        PENDING_CREATES[from_number]["step"] = "await_members"
+        send_message(from_number, MSG_CREER_MEMBRES)
 
-    elif step == "await_frequency":
-        if text not in ("DAILY", "WEEKLY", "MONTHLY"):
-            send_message(from_number, "⚠️ Réponds avec DAILY, WEEKLY ou MONTHLY.")
+    elif step == "await_members":
+        if not raw_text.isdigit() or not (2 <= int(raw_text) <= 10):
+            send_message(from_number, "⚠️ Nombre de membres invalide. Entre 2 et 10.")
             return
-        freq_map = {"DAILY": "daily", "WEEKLY": "weekly", "MONTHLY": "monthly"}
-        update_user(from_number, frequency=freq_map[text])
-        PENDING_REGISTRATIONS[from_number]["step"] = "await_time"
-        send_message(from_number, MSG_DEMANDE_HEURE)
-
-    elif step == "await_time":
-        if not _is_valid_time(raw_text):
-            send_message(from_number, "⚠️ Format invalide. Entre l'heure au format HH:MM.\nEx: 08:00")
-            return
-        update_user(from_number, schedule_time=raw_text)
-        user = get_user(from_number)
-        if user["frequency"] in ("daily", "monthly"):
-            del PENDING_REGISTRATIONS[from_number]
-            user = get_user(from_number)
-            send_message(from_number, msg_confirmation_inscription(user))
-        else:
-            PENDING_REGISTRATIONS[from_number]["step"] = "await_day"
-            send_message(from_number, MSG_DEMANDE_JOUR)
-
-    elif step == "await_day":
-        if text not in JOURS_MAP:
-            send_message(from_number, "⚠️ Réponds avec LUNDI, MARDI, MERCREDI, JEUDI, VENDREDI, SAMEDI ou DIMANCHE.")
-            return
-        update_user(from_number, schedule_day=JOURS_MAP[text])
-        del PENDING_REGISTRATIONS[from_number]
-        user = get_user(from_number)
-        send_message(from_number, msg_confirmation_inscription(user))
+        state = PENDING_CREATES[from_number]
+        del PENDING_CREATES[from_number]
+        _do_create_tontine(from_number, state["name"], state["amount"], int(raw_text))
 
 
-# --- STACK ---
+def _validate_creer(name, amount_str, members_str):
+    if len(name) < 2 or len(name) > 30:
+        return "⚠️ Nom invalide (2-30 caractères)."
+    if not amount_str.isdigit() or int(amount_str) < 100:
+        return "⚠️ Montant invalide. Minimum 100 sats."
+    if not members_str.isdigit() or not (2 <= int(members_str) <= 10):
+        return "⚠️ Nombre de membres invalide (2-10)."
+    return None
 
-def handle_stack(from_number, user):
-    if not user:
-        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
-        return
-    if not user["is_active"]:
-        send_message(from_number, "Ton DCA est en pause. Tape *REPRENDRE* pour le réactiver.")
-        return
 
-    amount = user["dca_amount_fcfa"]
-    send_message(from_number, msg_paiement_envoye(amount))
+def _do_create_tontine(from_number, name, amount_sats, max_members):
+    """Crée la tontine + ajoute le créateur comme membre #1."""
+    code = _generate_code()
 
-    tx_id = create_transaction(user["id"], amount)
-
-    momo_result = request_to_pay(
-        amount=amount,
-        phone_number=user["momo_number"],
-        tx_id=str(tx_id)
+    tontine_id = create_tontine(
+        name=name,
+        code=code,
+        amount_sats=amount_sats,
+        max_members=max_members,
+        created_by=from_number
     )
 
-    if not momo_result["success"]:
-        update_transaction(tx_id, status="failed")
-        send_message(from_number, msg_paiement_echoue(amount))
+    if not tontine_id:
+        send_message(from_number, "❌ Erreur lors de la création. Réessaie.")
         return
 
-    momo_tx_id = momo_result.get("transaction_id", "")
-    update_transaction(tx_id, momo_tx_id=momo_tx_id, status="momo_pending")
+    # Demander le wallet du créateur
+    PENDING_JOINS[from_number] = {
+        "step": "await_wallet",
+        "tontine_id": tontine_id,
+        "code": code,
+        "name": name,
+        "amount_sats": amount_sats,
+        "max_members": max_members,
+        "is_creator": True
+    }
 
-    flash_result = buy_sats(amount, user["lightning_wallet"])
+    send_message(from_number, f"✅ Tontine *{name}* créée !\n\n⚡ *Quel est ton wallet Lightning ?*\n(Ex: tonnom@cake.cash)")
 
-    if not flash_result:
-        update_transaction(tx_id, status="failed")
-        send_message(from_number, msg_paiement_echoue(amount))
+
+# ==============================================================
+# REJOINDRE
+# ==============================================================
+
+def handle_rejoindre(from_number, text, raw_text):
+    """
+    Syntaxe : REJOINDRE CODE
+    Ex : REJOINDRE TONT-4X7K
+    """
+    # Déjà dans une tontine ?
+    existing = get_tontine_by_member(from_number)
+    if existing:
+        send_message(from_number, f"⚠️ Tu es déjà dans une tontine active (*{existing['name']}*).\n\nTape *TONTINE* pour voir son statut.")
         return
 
-    sats_received = flash_result.get("sats", 0)
-    flash_tx_id = flash_result.get("tx_id", "")
+    parts = raw_text.strip().split()
 
-    update_transaction(tx_id, sats_received=sats_received, flash_tx_id=flash_tx_id, status="success")
-    new_total = (user["total_sats"] or 0) + sats_received
-    update_user(from_number, total_sats=new_total)
-
-    send_message(from_number, msg_achat_reussi(sats_received, new_total, amount))
-
-
-# --- SOLDE ---
-
-def handle_solde(from_number, user):
-    if not user:
-        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
+    if len(parts) < 2:
+        send_message(from_number, "⚠️ Indique le code de la tontine.\nEx: *REJOINDRE TONT-4X7K*")
         return
-    stats = get_user_stats(user["id"])
-    send_message(from_number, msg_solde(
-        total_sats=stats["total_sats"] or 0,
-        total_fcfa=stats["total_fcfa"] or 0,
-        total_transactions=stats["total_transactions"] or 0
-    ))
 
+    code = parts[1].upper()
+    tontine = get_tontine_by_code(code)
 
-# --- PAUSE ---
-
-def handle_pause(from_number, user):
-    if not user:
-        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
+    if not tontine:
+        send_message(from_number, f"❌ Code *{code}* introuvable. Vérifie le code et réessaie.")
         return
-    update_user(from_number, is_active=0)
-    send_message(from_number, MSG_PAUSE)
 
-
-# --- REPRENDRE ---
-
-def handle_reprendre(from_number, user):
-    if not user:
-        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
+    if tontine["status"] != "waiting":
+        send_message(from_number, "❌ Cette tontine est déjà lancée ou terminée.")
         return
-    update_user(from_number, is_active=1)
-    send_message(from_number, MSG_REPRENDRE)
 
-
-# --- MODIFIER ---
-
-def handle_modifier(from_number, user):
-    if not user:
-        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
+    current_count = count_members(tontine["id"])
+    if current_count >= tontine["max_members"]:
+        send_message(from_number, "❌ Cette tontine est complète.")
         return
-    PENDING_MODIFICATIONS[from_number] = {"step": "await_choice"}
-    send_message(from_number, MSG_MODIFIER)
+
+    # Déjà membre ?
+    if get_member(tontine["id"], from_number):
+        send_message(from_number, "⚠️ Tu es déjà membre de cette tontine.")
+        return
+
+    # Demander le wallet
+    PENDING_JOINS[from_number] = {
+        "step": "await_wallet",
+        "tontine_id": tontine["id"],
+        "code": code,
+        "name": tontine["name"],
+        "amount_sats": tontine["amount_sats"],
+        "max_members": tontine["max_members"],
+        "is_creator": False
+    }
+
+    send_message(from_number, f"✅ Tontine *{tontine['name']}* trouvée !\n{current_count}/{tontine['max_members']} membres\n\n⚡ *Quel est ton wallet Lightning ?*\n(Ex: tonnom@cake.cash)")
 
 
-def handle_modification_step(from_number, text, raw_text):
-    state = PENDING_MODIFICATIONS[from_number]
+def handle_join_step(from_number, text, raw_text):
+    state = PENDING_JOINS[from_number]
     step = state["step"]
 
-    if step == "await_choice":
-        if text == "MONTANT":
-            PENDING_MODIFICATIONS[from_number]["step"] = "await_new_amount"
-            send_message(from_number, "💰 Nouveau montant en FCFA ? (minimum 100)")
-        elif text == "FREQUENCE":
-            PENDING_MODIFICATIONS[from_number]["step"] = "await_new_frequency"
-            send_message(from_number, MSG_DEMANDE_FREQUENCE)
-        elif text == "WALLET":
-            PENDING_MODIFICATIONS[from_number]["step"] = "await_new_wallet"
-            send_message(from_number, "⚡ Nouvelle adresse Lightning ?")
-        elif text == "MOMO":
-            PENDING_MODIFICATIONS[from_number]["step"] = "await_new_momo"
-            send_message(from_number, "📱 Nouveau numéro MTN MoMo ? (avec indicatif pays)")
+    if step == "await_wallet":
+        wallet = raw_text.strip()
+        if not _is_valid_wallet(wallet):
+            send_message(from_number, "⚠️ Adresse wallet invalide.\nEx: tonnom@cake.cash ou lnbc...")
+            return
+
+        tontine_id = state["tontine_id"]
+        turn_order = count_members(tontine_id) + 1
+
+        member_id = add_member(
+            tontine_id=tontine_id,
+            whatsapp_number=from_number,
+            lightning_wallet=wallet,
+            turn_order=turn_order
+        )
+
+        if not member_id:
+            send_message(from_number, "❌ Erreur lors de l'inscription. Réessaie.")
+            del PENDING_JOINS[from_number]
+            return
+
+        del PENDING_JOINS[from_number]
+
+        tontine = get_tontine_by_id(tontine_id)
+        current_count = count_members(tontine_id)
+        max_members = tontine["max_members"]
+        name = tontine["name"]
+        code = tontine["code"]
+
+        # Message de confirmation au nouveau membre
+        if state["is_creator"]:
+            send_message(from_number, msg_tontine_creee(name, code, state["amount_sats"], max_members))
         else:
-            send_message(from_number, "⚠️ Réponds avec MONTANT, FREQUENCE, WALLET ou MOMO.")
+            send_message(from_number, msg_membre_rejoint(name, current_count, max_members))
 
-    elif step == "await_new_amount":
-        if not _is_valid_amount(raw_text):
-            send_message(from_number, "⚠️ Montant invalide. Entre un nombre entier (minimum 100).")
-            return
-        update_user(from_number, dca_amount_fcfa=int(raw_text))
-        del PENDING_MODIFICATIONS[from_number]
-        send_message(from_number, f"✅ Montant mis à jour : *{raw_text} FCFA* par cycle.")
+        # Notifier les autres membres
+        if not state["is_creator"]:
+            _notify_all_members(tontine_id, from_number,
+                f"👋 Un nouveau membre a rejoint *{name}* ! ({current_count}/{max_members})")
 
-    elif step == "await_new_frequency":
-        if text not in ("DAILY", "WEEKLY", "MONTHLY"):
-            send_message(from_number, "⚠️ Réponds avec DAILY, WEEKLY ou MONTHLY.")
-            return
-        freq_map = {"DAILY": "daily", "WEEKLY": "weekly", "MONTHLY": "monthly"}
-        update_user(from_number, frequency=freq_map[text])
-        PENDING_MODIFICATIONS[from_number]["step"] = "await_new_time"
-        send_message(from_number, "✅ Fréquence mise à jour !\n\n⏰ *À quelle heure veux-tu ton rappel ?*\n(Ex: 08:00, 12:30 — format HH:MM)")
-
-    elif step == "await_new_time":
-        if not _is_valid_time(raw_text):
-            send_message(from_number, "⚠️ Format invalide. Entre l'heure au format HH:MM.\nEx: 08:00")
-            return
-        update_user(from_number, schedule_time=raw_text)
-        user = get_user(from_number)
-        if user["frequency"] == "weekly":
-            PENDING_MODIFICATIONS[from_number]["step"] = "await_new_day"
-            send_message(from_number, MSG_DEMANDE_JOUR)
-        else:
-            del PENDING_MODIFICATIONS[from_number]
-            send_message(from_number, f"✅ Heure mise à jour : *{raw_text}*.")
-
-    elif step == "await_new_day":
-        if text not in JOURS_MAP:
-            send_message(from_number, "⚠️ Réponds avec LUNDI, MARDI, MERCREDI, JEUDI, VENDREDI, SAMEDI ou DIMANCHE.")
-            return
-        update_user(from_number, schedule_day=JOURS_MAP[text])
-        del PENDING_MODIFICATIONS[from_number]
-        send_message(from_number, f"✅ Jour mis à jour : *{raw_text}*.")
-
-    elif step == "await_new_wallet":
-        if not _is_valid_wallet(raw_text):
-            send_message(from_number, "⚠️ Adresse wallet invalide.")
-            return
-        update_user(from_number, lightning_wallet=raw_text)
-        del PENDING_MODIFICATIONS[from_number]
-        send_message(from_number, f"✅ Wallet mis à jour : `{raw_text}`.")
-
-    elif step == "await_new_momo":
-        if not _is_valid_phone(raw_text):
-            send_message(from_number, "⚠️ Numéro invalide. Entre ton numéro avec l'indicatif pays.")
-            return
-        update_user(from_number, momo_number=raw_text)
-        del PENDING_MODIFICATIONS[from_number]
-        send_message(from_number, f"✅ Numéro MoMo mis à jour : *{raw_text}*.")
+        # Lancement automatique si tontine complète
+        if current_count >= max_members:
+            _launch_tontine(tontine_id)
 
 
-# --- PROFIL ---
-def handle_profil(from_number, user):
-    if not user:
-        send_message(from_number, "Tu n'es pas encore inscrit. Tape *DEMARRER* pour commencer !")
+# ==============================================================
+# LANCEMENT AUTOMATIQUE
+# ==============================================================
+
+def _launch_tontine(tontine_id):
+    """Lance la tontine dès que tous les membres sont inscrits."""
+    from scheduler import start_first_round
+
+    tontine = get_tontine_by_id(tontine_id)
+    members = get_members(tontine_id)
+
+    update_tontine(tontine_id, status="active", current_round=0)
+
+    # Construire la liste des tours
+    ordre = "\n".join([
+        f"   Tour {m['turn_order']} → {'toi' if False else 'membre ' + str(m['turn_order'])}"
+        for m in members
+    ])
+
+    # Notifier chaque membre avec son ordre personnalisé
+    for member in members:
+        lignes = []
+        for m in members:
+            if m["whatsapp_number"] == member["whatsapp_number"]:
+                lignes.append(f"   Tour {m['turn_order']} → *toi* ⭐")
+            else:
+                lignes.append(f"   Tour {m['turn_order']} → membre {m['turn_order']}")
+        ordre_perso = "\n".join(lignes)
+
+        send_message(member["whatsapp_number"], msg_tontine_lancee(
+            tontine["name"],
+            len(members),
+            tontine["amount_sats"],
+            ordre_perso
+        ))
+
+    print(f"[TONTINE] Tontine {tontine['name']} lancée ✅")
+
+    # Démarrer le premier round via le scheduler
+    start_first_round(tontine_id)
+
+
+# ==============================================================
+# TONTINE — voir statut
+# ==============================================================
+
+def handle_tontine(from_number):
+    tontine = get_tontine_by_member(from_number)
+    if not tontine:
+        send_message(from_number, "❌ Tu n'es dans aucune tontine active.\n\nTape *CREER* ou *REJOINDRE CODE* pour commencer.")
         return
-    from messages import msg_profil
-    send_message(from_number, msg_profil(dict(user)))
-# --- Validations ---
 
-def _is_valid_phone(text):
-    return text.isdigit() and 10 <= len(text) <= 15
+    members = get_members(tontine["id"])
+    current_round = get_current_round(tontine["id"])
+
+    if tontine["status"] == "waiting":
+        current_count = len(members)
+        send_message(from_number, msg_statut_waiting(
+            tontine["name"],
+            tontine["code"],
+            current_count,
+            tontine["max_members"],
+            tontine["amount_sats"]
+        ))
+        return
+
+    if tontine["status"] == "active" and current_round:
+        payments = get_payments_for_round(current_round["id"])
+        paid_count = count_paid_in_round(current_round["id"])
+        total = len(members)
+
+        # Trouver le bénéficiaire de ce tour
+        beneficiary = get_member_by_id(current_round["beneficiary_member_id"])
+
+        # Savoir si ce membre a payé
+        member = get_member(tontine["id"], from_number)
+        my_payment = next(
+            (p for p in payments if p["member_id"] == member["id"]),
+            None
+        ) if member else None
+
+        send_message(from_number, msg_statut_active(
+            tontine["name"],
+            current_round["round_number"],
+            tontine["current_round"],  # total rounds = nb membres
+            beneficiary["whatsapp_number"],
+            beneficiary["whatsapp_number"] == from_number,
+            paid_count,
+            total,
+            my_payment["status"] if my_payment else "pending"
+        ))
+        return
+
+    if tontine["status"] == "completed":
+        send_message(from_number, f"✅ La tontine *{tontine['name']}* est terminée !\n\nTape *HISTORIQUE* pour voir le résumé.")
+
+
+# ==============================================================
+# MEMBRES
+# ==============================================================
+
+def handle_membres(from_number):
+    tontine = get_tontine_by_member(from_number)
+    if not tontine:
+        send_message(from_number, "❌ Tu n'es dans aucune tontine active.")
+        return
+
+    members = get_members(tontine["id"])
+    send_message(from_number, msg_liste_membres(tontine["name"], members, from_number))
+
+
+# ==============================================================
+# HISTORIQUE
+# ==============================================================
+
+def handle_historique(from_number):
+    tontine = get_tontine_by_member(from_number)
+
+    # Chercher aussi les tontines terminées
+    if not tontine:
+        from database import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT t.* FROM tontines t
+            JOIN tontine_members m ON m.tontine_id = t.id
+            WHERE m.whatsapp_number = ?
+            ORDER BY t.created_at DESC LIMIT 1
+        """, (from_number,))
+        tontine = cursor.fetchone()
+        conn.close()
+
+    if not tontine:
+        send_message(from_number, "❌ Aucune tontine trouvée.")
+        return
+
+    rounds = get_all_rounds(tontine["id"])
+    send_message(from_number, msg_historique(tontine["name"], rounds, tontine["amount_sats"]))
+
+
+# ==============================================================
+# UTILITAIRES
+# ==============================================================
+
+def _generate_code():
+    """Génère un code unique type TONT-XXXX."""
+    chars = string.ascii_uppercase + string.digits
+    suffix = "".join(random.choices(chars, k=4))
+    return f"TONT-{suffix}"
+
 
 def _is_valid_wallet(text):
     text_lower = text.lower()
-    return "@" in text_lower or text_lower.startswith("lnurl") or text_lower.startswith("ln")
+    return (
+        "@" in text_lower or
+        text_lower.startswith("lnurl") or
+        text_lower.startswith("lnbc") or
+        text_lower.startswith("lightning:")
+    )
 
-def _is_valid_amount(text):
-    return text.isdigit() and int(text) >= 100
 
-def _is_valid_time(text):
-    parts = text.split(":")
-    if len(parts) != 2:
-        return False
-    h, m = parts
-    if not h.isdigit() or not m.isdigit():
-        return False
-    return len(h) == 2 and 0 <= int(h) <= 23 and 0 <= int(m) <= 59
+def _notify_all_members(tontine_id, exclude_number, message):
+    """Envoie un message à tous les membres sauf un."""
+    members = get_members(tontine_id)
+    for member in members:
+        if member["whatsapp_number"] != exclude_number:
+            send_message(member["whatsapp_number"], message)
+
+
+def notify_all_members_payment(tontine_id, payer_number, paid_count, total):
+    """Notifie tous les membres qu'un paiement a été reçu."""
+    members = get_members(tontine_id)
+    tontine = get_tontine_by_id(tontine_id)
+
+    for member in members:
+        if member["whatsapp_number"] == payer_number:
+            send_message(payer_number, f"✅ Paiement reçu ! ({paid_count}/{total})\n\nMerci, on attend les autres membres.")
+        else:
+            send_message(member["whatsapp_number"],
+                f"✅ Paiement reçu pour *{tontine['name']}* ({paid_count}/{total})"
+            )

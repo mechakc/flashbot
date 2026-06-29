@@ -1,205 +1,221 @@
 # messages.py
 
-# --- Inscription ---
+MSG_AIDE = """⚡ *TontineBot — Commandes*
 
-MSG_BIENVENUE = """⚡ *Bienvenue sur FlashBot DCA !*
+- *CREER NOM MONTANT MEMBRES* — Créer une tontine
+  Ex: CREER MaFamille 5000 3
 
-Je suis ton assistant d'épargne Bitcoin automatique.
+- *REJOINDRE CODE* — Rejoindre une tontine
+  Ex: REJOINDRE TONT-4X7K
 
-Je vais t'aider à acheter des sats régulièrement via MTN MoMo — sans effort.
-
-Pour commencer, j'ai besoin de quelques infos.
-
-*Quel est ton numéro MTN MoMo ?*
-(Ex: 2250701234567 — avec l'indicatif pays)"""
-
-MSG_DEMANDE_WALLET = """✅ Numéro MoMo enregistré !
-
-*Quelle est ton adresse wallet Lightning ?*
-(Ex: ton_nom@bitcoin.lightning ou une adresse LNURL)
-
-Si tu n'en as pas encore, crée-en une gratuitement sur *Wallet of Satoshi* ou *Phoenix*."""
-
-MSG_DEMANDE_MONTANT = """✅ Wallet enregistré !
-
-*Quel montant veux-tu investir à chaque cycle ?*
-(Minimum : 100 FCFA — Ex: 500, 1000, 2000)
-
-Réponds juste avec le montant en chiffres."""
-
-MSG_DEMANDE_FREQUENCE = """✅ Montant enregistré !
-
-*À quelle fréquence veux-tu acheter des sats ?*
-
-Réponds avec :
-- *DAILY* — Chaque jour
-- *WEEKLY* — Chaque semaine  
-- *MONTHLY* — Chaque mois"""
-
-MSG_DEMANDE_HEURE = """✅ Fréquence enregistrée !
-
-*À quelle heure veux-tu recevoir ton rappel ?*
-(Ex: 08:00, 12:30, 20:00 — format HH:MM)"""
-
-MSG_DEMANDE_JOUR = """✅ Heure enregistrée !
-
-*Quel jour de la semaine ?*
-
-Réponds avec :
-- *LUNDI*
-- *MARDI*
-- *MERCREDI*
-- *JEUDI*
-- *VENDREDI*
-- *SAMEDI*
-- *DIMANCHE*"""
-
-def msg_confirmation_inscription(user):
-    jours = {
-        "monday": "lundi", "tuesday": "mardi", "wednesday": "mercredi",
-        "thursday": "jeudi", "friday": "vendredi", "saturday": "samedi",
-        "sunday": "dimanche"
-    }
-    frequences = {"daily": "chaque jour", "weekly": "chaque semaine", "monthly": "chaque mois"}
-    jour = jours.get(user["schedule_day"], user["schedule_day"])
-    freq = frequences.get(user["frequency"], user["frequency"])
-
-    return f"""🎉 *Configuration terminée !*
-
-Voici ton profil DCA :
-- 💰 Montant : *{user["dca_amount_fcfa"]} FCFA*
-- 🔁 Fréquence : *{freq}*
-- 📅 Jour : *{jour}*
-- ⏰ Heure : *{user["schedule_time"]}*
-- ⚡ Wallet : `{user["lightning_wallet"]}`
-
-À chaque cycle, je t'enverrai un rappel. Tu réponds *STACK* et je m'occupe du reste !
-
-_Tape AIDE pour voir toutes les commandes._"""
-
-# --- Cycle DCA ---
-
-def msg_rappel_dca(amount_fcfa):
-    return f"""⏰ *C'est l'heure de ton DCA !*
-
-Tape *STACK* pour acheter *{amount_fcfa} FCFA* de sats maintenant.
-
-_(Tu as 30 minutes pour confirmer)_"""
-
-def msg_paiement_envoye(amount_fcfa):
-    return f"""📲 *Demande de paiement envoyée !*
-
-Vérifie ton téléphone — tu devrais recevoir une notification MTN MoMo pour *{amount_fcfa} FCFA*.
-
-Entre ton code PIN pour valider. J'attends la confirmation... ⏳"""
-
-def msg_achat_reussi(sats_received, total_sats, amount_fcfa):
-    return f"""✅ *Achat réussi !*
-
-- 💸 Payé : *{amount_fcfa} FCFA*
-- ⚡ Reçu : *{sats_received} sats*
-- 🏦 Total stacké : *{total_sats} sats*
-
-Les sats sont sur ton wallet. Continue comme ça ! 🚀"""
-
-# --- Erreurs paiement ---
-
-def msg_paiement_echoue(amount_fcfa):
-    return f"""❌ *Paiement échoué*
-
-Ton paiement de *{amount_fcfa} FCFA* n'a pas pu être traité.
-
-Causes possibles :
-- Solde MoMo insuffisant
-- PIN incorrect ou délai dépassé
-
-Tape *STACK* pour réessayer ou *PAUSE* pour suspendre ton DCA."""
-
-MSG_TIMEOUT_CONFIRMATION = """⏰ *Temps écoulé*
-
-Tu n'as pas répondu à temps pour ce cycle.
-
-Pas de souci — ton prochain rappel arrivera normalement. 
-Tape *STACK* si tu veux acheter maintenant quand même."""
-
-# --- Commandes ---
-
-def msg_solde(total_sats, total_fcfa, total_transactions):
-    return f"""📊 *Ton bilan FlashBot*
-
-- ⚡ Total sats : *{total_sats} sats*
-- 💰 Total investi : *{total_fcfa} FCFA*
-- 🔄 Achats effectués : *{total_transactions}*
-
-_Continue à stacker, chaque sat compte !_ ⚡"""
-
-MSG_PAUSE = """⏸ *DCA suspendu*
-
-Tu ne recevras plus de rappels jusqu'à ce que tu tapes *REPRENDRE*.
-
-Tes sats et ton historique sont sauvegardés."""
-
-MSG_REPRENDRE = """▶️ *DCA réactivé !*
-
-Tes rappels automatiques reprennent normalement.
-Prêt à stacker des sats ! ⚡"""
-
-MSG_AIDE = """ℹ️ *Commandes FlashBot*
-
-- *DEMARRER* — Créer ou reconfigurer ton profil
-- *STACK* — Confirmer un achat DCA
-- *SOLDE* — Voir tes sats accumulés
-- *PAUSE* — Suspendre les rappels
-- *REPRENDRE* — Réactiver les rappels
-- *MODIFIER* — Changer montant ou fréquence
+- *TONTINE* — Voir le statut de ta tontine
+- *MEMBRES* — Voir les membres et l'ordre
+- *HISTORIQUE* — Voir les tours passés
 - *AIDE* — Afficher ce message
-- *PROFIL* — Voir ta configuration actuelle
 
-_Des questions ? Contacte l'équipe FlashBot._ ⚡"""
+_TontineBot — La tontine de confiance_ ⚡"""
 
-MSG_COMMANDE_INCONNUE = """❓ Je n'ai pas compris cette commande.
+MSG_COMMANDE_INCONNUE = """❓ Commande non reconnue.
 
 Tape *AIDE* pour voir toutes les commandes disponibles."""
 
-MSG_MODIFIER = """⚙️ *Modification de ton profil*
+MSG_CREER_NOM = """⚡ *Création d'une tontine*
 
-Que veux-tu changer ?
-- *MONTANT* — Changer le montant par cycle
-- *FREQUENCE* — Changer la fréquence
-- *WALLET* — Changer ton adresse Lightning
-- *MOMO* — Changer ton numéro MoMo"""
+Quel est le *nom* de ta tontine ?
+(Entre 2 et 30 caractères — Ex: MaFamille, TontineAmi)"""
 
-# --- Rapport hebdomadaire ---
+MSG_CREER_MONTANT = """✅ Nom enregistré !
 
-def msg_rapport_hebdo(total_sats_semaine, total_fcfa_semaine, transactions_semaine, total_sats_global):
-    return f"""📈 *Rapport hebdomadaire FlashBot*
+*Quel montant* chaque membre doit payer par tour ?
+(En satoshis — minimum 100 — Ex: 5000, 10000)"""
 
-Cette semaine :
-- 💸 Investi : *{total_fcfa_semaine} FCFA*
-- ⚡ Sats achetés : *{total_sats_semaine} sats*
-- 🔄 Achats : *{transactions_semaine}*
+MSG_CREER_MEMBRES = """✅ Montant enregistré !
 
-Depuis le début :
-- 🏦 Total : *{total_sats_global} sats*
+*Combien de membres* dans cette tontine ?
+(Entre 2 et 10 membres)"""
 
-_Bonne semaine et continue à stacker !_ ⚡"""
 
-def msg_profil(user):
-    jours = {
-        "monday": "lundi", "tuesday": "mardi", "wednesday": "mercredi",
-        "thursday": "jeudi", "friday": "vendredi", "saturday": "samedi",
-        "sunday": "dimanche"
-    }
-    frequences = {"daily": "chaque jour", "weekly": "chaque semaine", "monthly": "chaque mois"}
-    jour = jours.get(user["schedule_day"], user["schedule_day"])
-    freq = frequences.get(user["frequency"], user["frequency"])
-    statut = "✅ Actif" if user["is_active"] else "⏸ En pause"
+def msg_tontine_creee(name, code, amount_sats, max_members):
+    return f"""🎉 *Tontine créée avec succès !*
 
-    return f"""👤 *Ton profil FlashBot*
-    - 📱 MoMo : *{user["momo_number"]}*
-    - ⚡ Wallet : `{user["lightning_wallet"]}`
-    - 💰 Montant : *{user["dca_amount_fcfa"]} FCFA*
-    - 🔁 Fréquence : *{freq}*
-    - 📅 Jour : *{jour}*
-    - ⏰ Heure : *{user["schedule_time"]}*
-    - 🔆 Statut : *{statut}*"""
+- 📛 Nom : *{name}*
+- 🔑 Code : *{code}*
+- ⚡ Montant : *{amount_sats} sats* par tour
+- 👥 Membres : *1/{max_members}*
+
+Partage ce code à tes membres :
+👉 *{code}*
+
+Ils tapent : *REJOINDRE {code}*
+
+La tontine démarre automatiquement quand tous les membres sont inscrits !"""
+
+
+def msg_membre_rejoint(name, current_count, max_members):
+    if current_count < max_members:
+        return f"""✅ *Tu as rejoint {name} !*
+
+👥 Membres : *{current_count}/{max_members}*
+
+En attente des autres membres...
+La tontine démarre automatiquement quand tout le monde est inscrit."""
+    else:
+        return f"""✅ *Tu as rejoint {name} !*
+
+👥 Membres : *{current_count}/{max_members}* — Complet !
+
+La tontine va démarrer dans quelques secondes... ⚡"""
+
+
+def msg_tontine_lancee(name, nb_members, amount_sats, ordre_perso):
+    return f"""🚀 *{name} est lancée !*
+
+👥 {nb_members} membres — {amount_sats} sats par tour
+
+*Ordre des bénéficiaires :*
+{ordre_perso}
+
+Le premier tour commence dans quelques instants.
+Tu recevras une invoice Lightning à payer. ⚡"""
+
+
+def msg_invoice_tour(name, round_number, total_rounds, amount_sats, invoice, beneficiary_is_you):
+    benef_txt = "toi ⭐" if beneficiary_is_you else f"tour {round_number}"
+    return f"""⏰ *Tour {round_number}/{total_rounds} — {name}*
+
+💰 Envoie *{amount_sats} sats* à cette adresse Lightning :
+
+`{invoice}`
+
+Scanne ou copie cette invoice depuis ton wallet.
+
+🎯 Bénéficiaire de ce tour : *{benef_txt}*
+⏳ Paie dès que possible pour ne pas bloquer la tontine."""
+
+
+def msg_paiement_recu_perso(name, round_number, paid_count, total):
+    return f"""✅ *Paiement reçu !*
+
+Tontine *{name}* — Tour {round_number}
+Progression : *{paid_count}/{total}* membres ont payé
+
+{'🎉 Tout le monde a payé !' if paid_count == total else f'En attente de {total - paid_count} membre(s)...'}"""
+
+
+def msg_paiement_recu_autres(name, round_number, paid_count, total, payer_num):
+    num_court = f"...{payer_num[-4:]}"
+    return f"""✅ *{num_court} a payé* — {name} Tour {round_number}
+
+Progression : *{paid_count}/{total}* membres ont payé
+{'🎉 Tout le monde a payé !' if paid_count == total else f'En attente de {total - paid_count} membre(s)...'}"""
+
+
+def msg_rappel_paiement(name, round_number, amount_sats, invoice):
+    return f"""⚠️ *Rappel — {name} Tour {round_number}*
+
+La tontine attend ton paiement !
+
+💰 Envoie *{amount_sats} sats* :
+`{invoice}`
+
+Sans ton paiement, personne ne peut avancer."""
+
+
+def msg_round_complet(name, round_number, total_rounds):
+    if round_number < total_rounds:
+        return f"""🎉 *Tour {round_number} complet !*
+
+Tout le monde a payé pour *{name}*.
+
+➡️ Prochain tour : *Tour {round_number + 1}/{total_rounds}*
+Il démarre dans quelques instants..."""
+    else:
+        return f"""🎉 *Dernier tour complet !*
+
+Tout le monde a payé pour *{name}*.
+
+Distribution des fonds en cours... ⚡"""
+
+
+def msg_distribution(name, amount_sats, nb_members):
+    total = amount_sats * nb_members
+    return f"""💸 *Distribution finale — {name}*
+
+Chaque membre reçoit *{total} sats*
+({nb_members} tours x {amount_sats} sats)
+
+Envoi en cours sur vos wallets Lightning... ⚡"""
+
+
+def msg_payout_recu(name, amount_sats, nb_members):
+    total = amount_sats * nb_members
+    return f"""⚡ *Tu as reçu {total} sats !*
+
+Tontine *{name}* terminée avec succès.
+
+- 💰 Montant reçu : *{total} sats*
+- 🔄 Tours complétés : *{nb_members}*
+
+Merci d'avoir utilisé TontineBot ! ⚡"""
+
+
+def msg_tontine_terminee(name):
+    return f"""✅ *Tontine {name} terminée !*
+
+Tout le monde a été payé avec succès.
+
+Tape *CREER* pour démarrer une nouvelle tontine."""
+
+
+def msg_statut_waiting(name, code, current_count, max_members, amount_sats):
+    return f"""📊 *Statut — {name}*
+
+- 🔑 Code : *{code}*
+- ⚡ Montant : *{amount_sats} sats/tour*
+- 👥 Membres : *{current_count}/{max_members}*
+- 🕐 Statut : En attente de membres
+
+Partage le code *{code}* pour inviter les autres !"""
+
+
+def msg_statut_active(name, round_number, total_rounds, beneficiary_number, is_beneficiary, paid_count, total, my_status):
+    benef = "toi ⭐" if is_beneficiary else f"...{beneficiary_number[-4:]}"
+    mon_statut = "✅ Payé" if my_status == "paid" else "⏳ En attente"
+
+    return f"""📊 *Statut — {name}*
+
+- 🔄 Tour : *{round_number}/{total_rounds}*
+- 🎯 Bénéficiaire : *{benef}*
+- 💳 Paiements : *{paid_count}/{total}*
+- 👤 Mon statut : *{mon_statut}*"""
+
+
+def msg_liste_membres(name, members, from_number):
+    lignes = []
+    for m in members:
+        marker = " ⭐ (toi)" if m["whatsapp_number"] == from_number else ""
+        lignes.append(f"  Tour {m['turn_order']} → ...{m['whatsapp_number'][-4:]}{marker}")
+    liste = "\n".join(lignes)
+
+    return f"""👥 *Membres — {name}*
+
+{liste}
+
+_L'ordre = ordre d'inscription = ordre des bénéficiaires_"""
+
+
+def msg_historique(name, rounds, amount_sats):
+    if not rounds:
+        return f"📜 *Historique — {name}*\n\nAucun tour encore complété."
+
+    lignes = []
+    for r in rounds:
+        statut = "✅" if r["status"] == "completed" else "🔄" if r["status"] == "active" else "⏳"
+        lignes.append(f"  {statut} Tour {r['round_number']} — {r['status']}")
+
+    liste = "\n".join(lignes)
+    return f"""📜 *Historique — {name}*
+
+{liste}
+
+⚡ Montant par tour : {amount_sats} sats"""
