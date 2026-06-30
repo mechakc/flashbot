@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -11,9 +11,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
 .logo{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
 .logo span{color:#1D9E75}
-.nav-tabs{display:flex;gap:0}
+.nav-tabs{display:flex;gap:0;align-items:center}
 .nav-tab{padding:0 1.25rem;height:56px;border:none;background:none;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;font-family:inherit;transition:all 0.15s}
 .nav-tab.active{color:#1D9E75;border-bottom-color:#1D9E75;font-weight:600}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;display:inline-block;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.live-indicator{font-size:12px;color:#1D9E75;display:flex;align-items:center;margin-right:1rem}
 .page{display:none;padding:2rem;max-width:1100px;margin:0 auto}
 .page.active{display:block}
 
@@ -30,13 +33,14 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
 .stat-num{font-size:28px;font-weight:600;color:#1D9E75}
 .stat-label{font-size:12px;color:#666;margin-top:4px}
 
-.how-section{max-width:680px;margin:0 auto 3rem}
-.how-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.step{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
-.step-num{width:28px;height:28px;border-radius:50%;background:#E1F5EE;color:#0F6E56;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-.step h3{font-size:14px;font-weight:600;margin-bottom:6px}
-.step p{font-size:13px;color:#666;line-height:1.5}
+.flow-section{max-width:680px;margin:0 auto 3rem}
+.flow-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
+.flow-diagram{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.5rem}
+.flow-step{display:flex;align-items:center;gap:16px;padding:14px 0}
+.flow-step:not(:last-child){border-bottom:0.5px dashed #e0e0d8}
+.flow-icon{width:40px;height:40px;border-radius:50%;background:#E1F5EE;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.flow-text h3{font-size:14px;font-weight:600;margin-bottom:2px}
+.flow-text p{font-size:13px;color:#666;line-height:1.4}
 
 .why-section{max-width:680px;margin:0 auto 3rem}
 .why-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
@@ -46,23 +50,60 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
 .why-card h3{font-size:14px;font-weight:600;margin-bottom:4px}
 .why-card p{font-size:13px;color:#666;line-height:1.5}
 
+.btc-ticker{max-width:680px;margin:0 auto 3rem;background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.btc-ticker-left{display:flex;align-items:center;gap:10px}
+.btc-icon{width:32px;height:32px;border-radius:50%;background:#FAEEDA;color:#854F0B;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.btc-ticker-label{font-size:12px;color:#666}
+.btc-ticker-val{font-size:16px;font-weight:600}
+.btc-ticker-right{display:flex;gap:20px;align-items:center}
+.btc-stat{text-align:right}
+.btc-stat-lbl{font-size:11px;color:#666}
+.btc-stat-val{font-size:14px;font-weight:600}
+.btc-change-up{color:#0F6E56}
+.btc-change-down{color:#A32D2D}
+.btc-source{font-size:11px;color:#999}
+
+.sim-section{max-width:680px;margin:0 auto 3rem}
+.sim-section h2{font-size:20px;font-weight:600;margin-bottom:0.5rem;text-align:center}
+.sim-sub{font-size:13px;color:#666;text-align:center;margin-bottom:1.5rem}
+.sim-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.5rem}
+.sim-row{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
+.sim-row label{font-size:14px;color:#666;width:140px;flex-shrink:0}
+.sim-row input[type=range]{flex:1}
+.sim-row .sim-out{font-size:14px;font-weight:600;min-width:90px;text-align:right}
+.sim-result{border-top:0.5px solid #e0e0d8;padding-top:1.25rem;margin-top:0.5rem}
+.sim-result-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.sim-result-lbl{font-size:13px;color:#666}
+.sim-result-val{font-size:20px;font-weight:600;color:#1D9E75}
+.sim-result-sub{font-size:12px;color:#999}
+.sim-note{font-size:12px;color:#999;margin-top:1rem;line-height:1.5}
+
 .dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
 .dash-header h2{font-size:20px;font-weight:600}
 .search-row{display:flex;gap:8px;margin-bottom:1.5rem}
 .search-row input{flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a18}
 .search-row button{padding:8px 16px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap}
 
-.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.metrics-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem}
 .metric{background:#f0efe8;border-radius:8px;padding:1rem}
-.metric-val{font-size:24px;font-weight:600}
-.metric-lbl{font-size:12px;color:#666;margin-top:2px}
+.metric-val{font-size:22px;font-weight:600}
+.metric-lbl{font-size:11px;color:#666;margin-top:2px}
 .metric.green .metric-val{color:#1D9E75}
 .metric.amber .metric-val{color:#BA7517}
+.metric.blue .metric-val{color:#185FA5}
 
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem}
 .card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
 .card h3{font-size:14px;font-weight:600;margin-bottom:1rem;color:#666}
 .chart-wrap{position:relative;height:180px}
+
+.activity-feed{display:flex;flex-direction:column;gap:0;max-height:280px;overflow-y:auto}
+.activity-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #e0e0d8}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.activity-text{font-size:13px;flex:1}
+.activity-text strong{font-weight:600}
+.activity-time{font-size:11px;color:#999;white-space:nowrap}
 
 .tontine-detail{display:none}
 .tontine-detail.active{display:block}
@@ -92,7 +133,7 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
 
 .back-btn{background:none;border:1px solid #ccc;padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:#1a1a18;margin-bottom:1rem}
 
-.empty{text-align:center;padding:3rem;color:#666;font-size:14px}
+.empty{text-align:center;padding:2rem 1rem;color:#666;font-size:14px}
 
 .recent-list{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
 .recent-item{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color 0.15s}
@@ -102,6 +143,17 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
 .recent-right{text-align:right}
 .recent-sats{font-size:14px;font-weight:600;color:#1D9E75}
 .recent-members{font-size:12px;color:#666}
+
+.timeline-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem;margin-bottom:16px}
+.timeline-list{display:flex;flex-direction:column;gap:0}
+.timeline-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid #e0e0d8}
+.timeline-row:last-child{border-bottom:none}
+.timeline-marker{width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0}
+.timeline-content{flex:1;font-size:13px}
+.timeline-amount{font-size:13px;font-weight:600;color:#1D9E75}
+
+.wallet-strip{background:#E1F5EE;border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;font-size:13px}
+.wallet-strip strong{color:#0F6E56;font-size:15px}
 </style>
 </head>
 <body>
@@ -109,6 +161,7 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
 <nav>
   <div class="logo"><span>⚡</span> TontineBot</div>
   <div class="nav-tabs">
+    <span class="live-indicator" id="live-ind" style="display:none"><span class="live-dot"></span>Live</span>
     <button class="nav-tab active" onclick="showPage('landing')">Présentation</button>
     <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
   </div>
@@ -120,7 +173,7 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
     <p>TontineBot automatise les tontines communautaires via WhatsApp et Lightning Network. Le bot gère l'argent personne ne peut fuir avec la caisse.</p>
     <div class="cta-row">
       <button class="btn-primary" onclick="showPage('dashboard')">Voir le dashboard</button>
-      <a href="https://wa.me/22943267102" target="_blank" style="text-decoration: none;" class="btn-secondary">WhatsApp ⚡TontineBot</a>
+      <a href="https://wa.me/22943267102" class="btn-secondary" target="_blank" style="text-decoration: none;">WhatsApp ⚡TontineBot</a>
     </div>
   </div>
 
@@ -131,12 +184,82 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
     <div class="stat-card"><div class="stat-num" id="s-sats">—</div><div class="stat-label">Sats gérés</div></div>
   </div>
 
-  <div class="how-section">
+  <div class="btc-ticker" id="btc-ticker" style="display:none">
+    <div class="btc-ticker-left">
+      <div class="btc-icon">₿</div>
+      <div>
+        <div class="btc-ticker-label">1 satoshi vaut</div>
+        <div class="btc-ticker-val" id="btc-sat-val">—</div>
+      </div>
+    </div>
+    <div class="btc-ticker-right">
+      <div class="btc-stat">
+        <div class="btc-stat-lbl">1 BTC</div>
+        <div class="btc-stat-val" id="btc-full-val">—</div>
+      </div>
+      <div class="btc-stat">
+        <div class="btc-stat-lbl">24h</div>
+        <div class="btc-stat-val" id="btc-change">—</div>
+      </div>
+      <div class="btc-source" id="btc-source">CoinGecko</div>
+    </div>
+  </div>
+
+  <div class="flow-section">
     <h2>Comment ça marche</h2>
-    <div class="steps">
-      <div class="step"><div class="step-num">1</div><h3>Créer</h3><p>Tape CREER sur WhatsApp, configure le montant et le nombre de membres.</p></div>
-      <div class="step"><div class="step-num">2</div><h3>Rejoindre</h3><p>Partage le code. Chaque membre tape REJOINDRE et donne son wallet Lightning.</p></div>
-      <div class="step"><div class="step-num">3</div><h3>Payer & recevoir</h3><p>Le bot envoie les invoices, collecte, et distribue automatiquement à la fin.</p></div>
+    <div class="flow-diagram">
+      <div class="flow-step">
+        <div class="flow-icon">1</div>
+        <div class="flow-text"><h3>Création sur WhatsApp</h3><p>Le créateur tape CREER, fixe le montant, le nombre de membres et la fréquence des tours.</p></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">2</div>
+        <div class="flow-text"><h3>Inscription des membres</h3><p>Chaque membre tape REJOINDRE avec le code, fournit son wallet Lightning. La tontine démarre dès que le quota est atteint.</p></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">3</div>
+        <div class="flow-text"><h3>Collecte via invoice Lightning</h3><p>Le bot génère une invoice LNbits pour chaque membre et l'envoie en DM. Paiement instantané, frais quasi nuls.</p></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">4</div>
+        <div class="flow-text"><h3>Suivi en temps réel</h3><p>Dès qu'un paiement est reçu, tous les membres sont notifiés. Le tour avance seulement quand tout le monde a payé.</p></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-icon">5</div>
+        <div class="flow-text"><h3>Distribution finale</h3><p>Une fois tous les tours complétés, le bot redistribue les sats automatiquement à chaque membre, sans intervention humaine.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sim-section">
+    <h2>Simule ta tontine</h2>
+    <p class="sim-sub">Calcul réel basé sur le mécanisme de TontineBot — pas un rendement inventé</p>
+    <div class="sim-card">
+      <div class="sim-row">
+        <label>Montant par tour</label>
+        <input type="range" min="100" max="500000" step="100" value="5000" id="sim-amount"/>
+        <span class="sim-out" id="sim-amount-out">5 000 sats</span>
+      </div>
+      <div class="sim-row">
+        <label>Nombre de membres</label>
+        <input type="range" min="2" max="10" step="1" value="5" id="sim-members"/>
+        <span class="sim-out" id="sim-members-out">5</span>
+      </div>
+      <div class="sim-result">
+        <div class="sim-result-row">
+          <span class="sim-result-lbl">Chaque membre verse au total</span>
+          <span class="sim-result-val" id="sim-total-paid">—</span>
+        </div>
+        <div class="sim-result-row">
+          <span class="sim-result-lbl">Chaque membre reçoit à son tour</span>
+          <span class="sim-result-val" id="sim-total-received">—</span>
+        </div>
+        <div class="sim-result-row">
+          <span class="sim-result-lbl">Équivalent FCFA (taux live)</span>
+          <span class="sim-result-val" id="sim-fcfa">—</span>
+        </div>
+        <p class="sim-note">Une tontine ne génère pas d'intérêt — c'est de l'épargne mutualisée. Chaque membre verse <strong id="sim-note-amount">5 000</strong> sats à chacun des <strong id="sim-note-rounds">5</strong> tours, et reçoit l'intégralité du pot une seule fois, à son tour assigné.</p>
+      </div>
     </div>
   </div>
 
@@ -155,16 +278,22 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
   <div id="dash-main">
     <div class="dash-header"><h2>Dashboard</h2></div>
 
+    <div class="wallet-strip" id="wallet-strip" style="display:none">
+      <span>💼 Wallet du bot (LNbits)</span>
+      <strong id="wallet-balance">—</strong>
+    </div>
+
     <div class="metrics-grid">
-      <div class="metric green"><div class="metric-val" id="d-active">—</div><div class="metric-lbl">Tontines actives</div></div>
+      <div class="metric green"><div class="metric-val" id="d-active">—</div><div class="metric-lbl">Actives</div></div>
       <div class="metric"><div class="metric-val" id="d-total">—</div><div class="metric-lbl">Total créées</div></div>
       <div class="metric amber"><div class="metric-val" id="d-sats">—</div><div class="metric-lbl">Sats gérés</div></div>
-      <div class="metric"><div class="metric-val" id="d-members">—</div><div class="metric-lbl">Membres totaux</div></div>
+      <div class="metric"><div class="metric-val" id="d-members">—</div><div class="metric-lbl">Membres</div></div>
+      <div class="metric blue"><div class="metric-val" id="d-pending">—</div><div class="metric-lbl">En attente</div></div>
     </div>
 
     <div class="dash-grid">
       <div class="card"><h3>Répartition des tontines</h3><div class="chart-wrap"><canvas id="chart-status"></canvas></div></div>
-      <div class="card"><h3>Activité des paiements</h3><div class="chart-wrap"><canvas id="chart-payments"></canvas></div></div>
+      <div class="card"><h3>Activité en direct</h3><div class="activity-feed" id="activity-feed"><div class="empty">Aucune activité</div></div></div>
     </div>
 
     <div class="search-row">
@@ -194,59 +323,104 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
       <div class="card"><h3>Membres</h3><div class="members-list" id="det-members"></div></div>
     </div>
 
+    <div class="timeline-card">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:1rem;color:#666">Évolution des sats collectés</h3>
+      <div class="chart-wrap" style="height:160px"><canvas id="chart-timeline"></canvas></div>
+    </div>
+
     <div class="card" style="margin-bottom:16px">
-      <h3>Historique des tours</h3>
+      <h3>Historique détaillé des tours</h3>
       <div id="det-history"></div>
     </div>
   </div>
 </div>
 
 <script>
+let currentDetailCode = null;
+let dashboardInterval = null;
+let chartStatus=null, chartTimeline=null;
+
 function showPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-tab')[p==='landing'?0:1].classList.add('active');
-  if(p==='dashboard') loadDashboard();
+  if(p==='dashboard'){
+    loadDashboard();
+    document.getElementById('live-ind').style.display='flex';
+    if(dashboardInterval) clearInterval(dashboardInterval);
+    dashboardInterval = setInterval(()=>{
+      if(currentDetailCode){ loadDetail(currentDetailCode, true); }
+      else { loadDashboard(); }
+    }, 5000);
+  } else {
+    document.getElementById('live-ind').style.display='none';
+    if(dashboardInterval) clearInterval(dashboardInterval);
+  }
 }
 
-async function fetchStats(){ try{const r=await fetch('/api/stats');return r.ok?await r.json():null;}catch(e){return null;} }
-async function fetchRecent(){ try{const r=await fetch('/api/tontines/recent');return r.ok?await r.json():[];}catch(e){return [];} }
-async function fetchTontine(code){ try{const r=await fetch('/api/tontine/'+code);return r.ok?await r.json():null;}catch(e){return null;} }
+async function fetchJSON(url){ try{const r=await fetch(url);return r.ok?await r.json():null;}catch(e){return null;} }
 
-function fmtSats(n){ if(n>=1000000) return Math.round(n/1000000)+'M'; if(n>=1000) return Math.round(n/1000)+'K'; return Math.round(n)+''; }
+function fmtSats(n){ if(n==null) return '—'; if(n>=1000000) return Math.round(n/1000000)+'M'; if(n>=1000) return Math.round(n/1000)+'K'; return Math.round(n)+''; }
 function statusLabel(s){ if(s==='active') return 'En cours'; if(s==='waiting') return 'En attente'; if(s==='completed') return 'Terminée'; return s; }
-
-let chartStatus=null, chartPayments=null;
+function timeAgo(ts){
+  if(!ts) return '';
+  const d = new Date(ts.replace(' ','T'));
+  const diff = Math.floor((Date.now()-d.getTime())/1000);
+  if(diff<60) return "à l'instant";
+  if(diff<3600) return Math.floor(diff/60)+' min';
+  if(diff<86400) return Math.floor(diff/3600)+' h';
+  return Math.floor(diff/86400)+' j';
+}
 
 async function loadDashboard(){
-  const [stats, recent] = await Promise.all([fetchStats(), fetchRecent()]);
+  const [stats, recent, activity] = await Promise.all([
+    fetchJSON('/api/stats'), fetchJSON('/api/tontines/recent'), fetchJSON('/api/activity')
+  ]);
+
   if(stats){
     document.getElementById('d-active').textContent = stats.active_tontines;
     document.getElementById('d-total').textContent = stats.total_tontines;
     document.getElementById('d-sats').textContent = fmtSats(stats.total_sats_managed)+' sats';
     document.getElementById('d-members').textContent = stats.total_members;
+    document.getElementById('d-pending').textContent = stats.pending_payments;
     document.getElementById('s-tontines').textContent = stats.total_tontines;
     document.getElementById('s-active').textContent = stats.active_tontines;
     document.getElementById('s-members').textContent = stats.total_members;
     document.getElementById('s-sats').textContent = fmtSats(stats.total_sats_managed)+' sats';
-    const waiting = stats.total_tontines - stats.active_tontines - stats.completed_tontines;
-    renderStatusChart(stats.active_tontines, Math.max(0,waiting), stats.completed_tontines);
-    renderPaymentsChart(stats.total_payments, stats.total_tontines);
+
+    if(stats.wallet_balance !== null && stats.wallet_balance !== undefined){
+      document.getElementById('wallet-strip').style.display='flex';
+      document.getElementById('wallet-balance').textContent = stats.wallet_balance.toLocaleString('fr-FR')+' sats';
+    }
+
+    renderStatusChart(stats.active_tontines, stats.waiting_tontines, stats.completed_tontines);
   }
-  renderRecent(recent);
+
+  renderRecent(recent || []);
+  renderActivity(activity || []);
 }
 
 function renderStatusChart(active, waiting, completed){
   const ctx = document.getElementById('chart-status').getContext('2d');
   if(chartStatus) chartStatus.destroy();
+  if(active+waiting+completed===0){
+    ctx.canvas.parentElement.innerHTML = '<div class="empty">Aucune donnée encore</div>';
+    return;
+  }
   chartStatus = new Chart(ctx,{type:'doughnut',data:{labels:['En cours','En attente','Terminées'],datasets:[{data:[active,waiting,completed],backgroundColor:['#1D9E75','#EF9F27','#378ADD'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}},cutout:'65%',responsive:true,maintainAspectRatio:false}});
 }
 
-function renderPaymentsChart(payments, tontines){
-  const ctx = document.getElementById('chart-payments').getContext('2d');
-  if(chartPayments) chartPayments.destroy();
-  chartPayments = new Chart(ctx,{type:'bar',data:{labels:['Paiements reçus','Tontines actives'],datasets:[{data:[payments, tontines],backgroundColor:['#1D9E75','#378ADD'],borderRadius:6,borderWidth:0}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11}}},x:{grid:{display:false},ticks:{font:{size:11}}}},responsive:true,maintainAspectRatio:false}});
+function renderActivity(activity){
+  const el = document.getElementById('activity-feed');
+  if(!activity.length){el.innerHTML='<div class="empty">Aucune activité encore</div>';return;}
+  el.innerHTML = activity.map(a=>`
+    <div class="activity-item">
+      <div class="activity-dot"></div>
+      <div class="activity-text"><strong>${a.display}</strong> a payé ${a.amount_sats} sats — ${a.tontine_name}</div>
+      <div class="activity-time">${timeAgo(a.paid_at)}</div>
+    </div>
+  `).join('');
 }
 
 function renderRecent(recent){
@@ -274,11 +448,12 @@ async function searchTontine(){
   await loadDetail(code);
 }
 
-async function loadDetail(code){
-  const data = await fetchTontine(code);
+async function loadDetail(code, silent){
+  const data = await fetchJSON('/api/tontine/'+code);
   const errEl = document.getElementById('search-error');
-  if(!data){errEl.textContent='Tontine introuvable. Vérifie le code.';errEl.style.display='block';return;}
+  if(!data){ if(!silent){errEl.textContent='Tontine introuvable. Vérifie le code.';errEl.style.display='block';} return; }
   errEl.style.display='none';
+  currentDetailCode = code;
 
   document.getElementById('dash-main').style.display='none';
   document.getElementById('dash-detail').classList.add('active');
@@ -296,17 +471,17 @@ async function loadDetail(code){
     const r = data.current_round_data;
     const pct = Math.round(r.paid_count/r.total_members*100);
     roundEl.innerHTML = `
-      <p style="font-size:14px;margin-bottom:12px">Tour <strong>${r.round_number}/${data.max_members}</strong></p>
+      <p style="font-size:14px;margin-bottom:12px">Tour <strong>${r.round_number}/${data.max_members}</strong> — démarré ${timeAgo(r.started_at)}</p>
       <div class="round-progress">
         <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
         <div class="progress-label">${r.paid_count}/${r.total_members} membres ont payé</div>
       </div>
       <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
-        ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span>${p.display}</span><span class="paid-badge ${p.status}">${p.status==='paid'?'Payé':'En attente'}</span></div>`).join('')}
+        ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span>${p.display}</span><span class="paid-badge ${p.status}">${p.status==='paid'?'Payé '+timeAgo(p.paid_at):'En attente'}</span></div>`).join('')}
       </div>
     `;
   } else {
-    roundEl.innerHTML = '<div class="empty" style="padding:1rem">'+(data.status==='waiting'?'En attente des membres':data.status==='completed'?'Tontine terminée':'Aucun tour actif')+'</div>';
+    roundEl.innerHTML = '<div class="empty">'+(data.status==='waiting'?'En attente des membres':data.status==='completed'?'Tontine terminée':'Aucun tour actif')+'</div>';
   }
 
   const membersEl = document.getElementById('det-members');
@@ -319,23 +494,100 @@ async function loadDetail(code){
     </div>
   `).join('');
 
+  renderTimelineChart(data.timeline || []);
+
   const histEl = document.getElementById('det-history');
   if(!data.rounds_history.length){
-    histEl.innerHTML='<div class="empty" style="padding:1rem">Aucun tour encore</div>';
+    histEl.innerHTML='<div class="empty">Aucun tour encore</div>';
   } else {
-    histEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">${data.rounds_history.map(r=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #e0e0d8">
-        <div><span style="font-size:14px;font-weight:600">Tour ${r.round_number}</span><span style="font-size:12px;color:#666;margin-left:8px">${(r.started_at||'').slice(0,10)}</span></div>
-        <span class="paid-badge ${r.status==='completed'?'paid':'pending'}">${statusLabel(r.status)}</span>
+    histEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${data.rounds_history.map(r=>`
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:14px;font-weight:600">Tour ${r.round_number}</span>
+          <span class="paid-badge ${r.status==='completed'?'paid':'pending'}">${statusLabel(r.status)}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding-left:8px">
+          ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#666"><span>${p.display}</span><span>${p.status==='paid'?(p.paid_at||'').replace('T',' ').slice(0,16):'en attente'}</span></div>`).join('')}
+        </div>
       </div>
     `).join('')}</div>`;
   }
 }
 
+function renderTimelineChart(timeline){
+  const ctx = document.getElementById('chart-timeline').getContext('2d');
+  if(chartTimeline) chartTimeline.destroy();
+  if(!timeline.length){
+    ctx.canvas.parentElement.innerHTML = '<div class="empty">Pas encore de paiements</div>';
+    return;
+  }
+  const labels = timeline.map(t=>(t.timestamp||'').replace('T',' ').slice(11,16));
+  const data = timeline.map(t=>t.cumulative);
+  chartTimeline = new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{data,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#1D9E75'}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11}}},x:{grid:{display:false},ticks:{font:{size:11}}}},responsive:true,maintainAspectRatio:false}
+  });
+}
+
 function showMain(){
+  currentDetailCode = null;
   document.getElementById('dash-main').style.display='block';
   document.getElementById('dash-detail').classList.remove('active');
+  loadDashboard();
 }
+
+// --- BTC ticker ---
+let lastBtcRate = null;
+
+async function loadBtcRate(){
+  const rate = await fetchJSON('/api/btc-rate');
+  if(!rate) return;
+  lastBtcRate = rate;
+
+  document.getElementById('btc-ticker').style.display='flex';
+  document.getElementById('btc-sat-val').textContent = rate.sat_fcfa.toFixed(2)+' FCFA';
+  document.getElementById('btc-full-val').textContent = Math.round(rate.btc_fcfa).toLocaleString('fr-FR')+' FCFA';
+
+  const changeEl = document.getElementById('btc-change');
+  const sign = rate.change_24h >= 0 ? '+' : '';
+  changeEl.textContent = sign+rate.change_24h+'%';
+  changeEl.className = 'btc-stat-val '+(rate.change_24h>=0?'btc-change-up':'btc-change-down');
+
+  updateSimulator();
+}
+
+// --- Simulateur ---
+function updateSimulator(){
+  const amount = parseInt(document.getElementById('sim-amount').value);
+  const members = parseInt(document.getElementById('sim-members').value);
+
+  document.getElementById('sim-amount-out').textContent = amount.toLocaleString('fr-FR')+' sats';
+  document.getElementById('sim-members-out').textContent = members;
+
+  const totalPaid = amount * members;
+  const totalReceived = amount * members;
+
+  document.getElementById('sim-total-paid').textContent = totalPaid.toLocaleString('fr-FR')+' sats';
+  document.getElementById('sim-total-received').textContent = totalReceived.toLocaleString('fr-FR')+' sats';
+
+  document.getElementById('sim-note-amount').textContent = amount.toLocaleString('fr-FR');
+  document.getElementById('sim-note-rounds').textContent = members;
+
+  if(lastBtcRate){
+    const fcfa = Math.round(totalReceived * lastBtcRate.sat_fcfa);
+    document.getElementById('sim-fcfa').textContent = fcfa.toLocaleString('fr-FR')+' FCFA';
+  } else {
+    document.getElementById('sim-fcfa').textContent = '—';
+  }
+}
+
+document.getElementById('sim-amount').addEventListener('input', updateSimulator);
+document.getElementById('sim-members').addEventListener('input', updateSimulator);
+
+loadBtcRate();
+setInterval(loadBtcRate, 60000);
+updateSimulator();
 
 loadDashboard();
 </script>

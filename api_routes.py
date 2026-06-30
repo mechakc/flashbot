@@ -1,4 +1,6 @@
 # api_routes.py
+import time
+import requests
 from flask import jsonify
 from database import (
     get_connection, get_members,
@@ -6,8 +8,69 @@ from database import (
     count_paid_in_round, get_tontine_by_code
 )
 
+# Cache simple en mémoire pour éviter de spammer CoinGecko à chaque refresh
+_btc_rate_cache = {"data": None, "fetched_at": 0}
+BTC_RATE_CACHE_SECONDS = 60
+
+
+def _get_btc_rate():
+    """
+    Récupère le taux BTC/FCFA.
+    CoinGecko ne supporte pas XOF directement, donc on passe par EUR
+    puis on convertit avec le taux fixe légal : 1 EUR = 655.957 FCFA
+    (parité fixe de la zone UEMOA, ne change jamais).
+    """
+    now = time.time()
+    if _btc_rate_cache["data"] and (now - _btc_rate_cache["fetched_at"]) < BTC_RATE_CACHE_SECONDS:
+        return _btc_rate_cache["data"]
+
+    EUR_TO_XOF = 655.957
+
+    try:
+        response = requests.get(
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={
+                "ids": "bitcoin",
+                "vs_currencies": "eur",
+                "include_24hr_change": "true"
+            },
+            timeout=5
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        btc_eur = data["bitcoin"]["eur"]
+        change_24h = data["bitcoin"].get("eur_24h_change", 0)
+
+        btc_xof = btc_eur * EUR_TO_XOF
+
+        result = {
+            "btc_fcfa": btc_xof,
+            "sat_fcfa": btc_xof / 100_000_000,
+            "change_24h": round(change_24h, 2),
+            "source": "CoinGecko (EUR -> XOF taux fixe UEMOA)",
+            "fetched_at": now
+        }
+
+        _btc_rate_cache["data"] = result
+        _btc_rate_cache["fetched_at"] = now
+        return result
+
+    except Exception as e:
+        print(f"[BTC RATE] Erreur CoinGecko : {e}")
+        if _btc_rate_cache["data"]:
+            return _btc_rate_cache["data"]
+        return None
+
 
 def register_api_routes(app):
+
+    @app.route("/api/btc-rate", methods=["GET"])
+    def api_btc_rate():
+        rate = _get_btc_rate()
+        if not rate:
+            return jsonify({"error": "Taux indisponible"}), 503
+        return jsonify(rate)
 
     @app.route("/api/stats", methods=["GET"])
     def api_stats():
