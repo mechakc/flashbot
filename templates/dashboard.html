@@ -3,177 +3,490 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TontineBot</title>
+<title>TontineBot — La tontine de confiance, sans intermédiaire</title>
+<meta name="description" content="Tontines communautaires automatisées sur WhatsApp et réglées en Lightning. Le bot tient la caisse, personne ne peut fuir avec l'argent.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+/* ============================================================
+   TontineBot design system — premium banking register.
+   Deep emerald (trust), warm gold (wealth), ivory canvas (calm).
+   ============================================================ */
+
+:root{
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+
+  --canvas: oklch(0.985 0.008 95);
+  --surface: oklch(0.995 0.004 95);
+  --surface-raised: oklch(1 0 0);
+  --ink: oklch(0.22 0.02 160);
+  --ink-soft: oklch(0.46 0.015 160);
+  --ink-faint: oklch(0.62 0.012 160);
+  --emerald: oklch(0.55 0.13 165);
+  --emerald-deep: oklch(0.38 0.11 165);
+  --emerald-soft: oklch(0.94 0.04 165);
+  --gold: oklch(0.74 0.13 78);
+  --gold-soft: oklch(0.94 0.05 85);
+  --clay: oklch(0.58 0.13 35);
+  --sand: oklch(0.93 0.02 85);
+  --hairline: oklch(0.9 0.012 95);
+  --blue: oklch(0.55 0.1 220);
+  --blue-soft: oklch(0.93 0.03 220);
+  --blue-deep: oklch(0.4 0.1 220);
+
+  --gradient-emerald: linear-gradient(135deg, oklch(0.55 0.13 165), oklch(0.42 0.12 168));
+  --gradient-gold: linear-gradient(135deg, oklch(0.78 0.13 78), oklch(0.66 0.13 65));
+  --gradient-mesh: radial-gradient(ellipse 50% 40% at 20% 10%, oklch(0.94 0.04 165 / 0.6), transparent 60%),
+                   radial-gradient(ellipse 40% 30% at 90% 20%, oklch(0.94 0.05 85 / 0.5), transparent 60%);
+
+  --shadow-soft: 0 1px 2px oklch(0.22 0.02 160 / 0.04), 0 8px 24px -8px oklch(0.22 0.02 160 / 0.08);
+  --shadow-card: 0 1px 0 oklch(1 0 0 / 0.6) inset, 0 1px 2px oklch(0.22 0.02 160 / 0.04), 0 12px 32px -12px oklch(0.22 0.02 160 / 0.1);
+  --shadow-lift: 0 4px 12px -4px oklch(0.22 0.02 160 / 0.12), 0 24px 48px -16px oklch(0.22 0.02 160 / 0.16);
+  --shadow-emerald: 0 8px 24px -8px oklch(0.55 0.13 165 / 0.35);
+
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f0;color:#1a1a18;min-height:100vh}
-nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
-.logo{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
-.logo span{color:#1D9E75}
-.nav-tabs{display:flex;gap:0;align-items:center}
-.nav-tab{padding:0 1.25rem;height:56px;border:none;background:none;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;font-family:inherit;transition:all 0.15s}
-.nav-tab.active{color:#1D9E75;border-bottom-color:#1D9E75;font-weight:600}
-.live-dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;display:inline-block;margin-right:6px;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-.live-indicator{font-size:12px;color:#1D9E75;display:flex;align-items:center;margin-right:1rem}
-.page{display:none;padding:2rem;max-width:1100px;margin:0 auto}
+
+body{
+  font-family:var(--font-sans);
+  background:var(--canvas);
+  color:var(--ink);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+h1,h2,h3,.font-display{font-family:var(--font-display);letter-spacing:-0.01em}
+.tabular{font-variant-numeric:tabular-nums}
+
+/* ---------------- Nav ---------------- */
+nav{
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(20px);
+  background:oklch(0.985 0.008 95 / 0.75);
+  border-bottom:1px solid var(--hairline);
+}
+.nav-inner{
+  max-width:1180px;margin:0 auto;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 1.5rem;
+}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.logo-mark{
+  width:32px;height:32px;border-radius:10px;
+  background-image:var(--gradient-emerald);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-emerald);color:#fff;
+}
+.logo-text{font-size:17px;font-weight:600;letter-spacing:-0.01em}
+.logo-text span{color:var(--emerald)}
+
+.nav-tabs{display:flex;align-items:center;gap:4px}
+.live-indicator{
+  display:none;align-items:center;gap:6px;margin-right:10px;
+  font-size:12px;font-weight:500;color:var(--emerald);
+}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--emerald);
+  box-shadow:0 0 0 0 oklch(0.55 0.13 165 / 0.6);
+  animation:pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite;
+}
+@keyframes pulse-ring{
+  0%,100%{box-shadow:0 0 0 0 oklch(0.55 0.13 165 / 0.55);opacity:1}
+  50%{box-shadow:0 0 0 6px oklch(0.55 0.13 165 / 0);opacity:0.7}
+}
+.nav-tab{
+  position:relative;border:none;background:none;cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:500;color:var(--ink-soft);
+  padding:7px 16px;border-radius:999px;transition:color .15s;
+}
+.nav-tab.active{color:var(--ink)}
+.nav-tab.active::before{
+  content:'';position:absolute;inset:0;border-radius:999px;
+  background:var(--emerald-soft);z-index:-1;
+}
+
+/* ---------------- Pages ---------------- */
+.page{display:none}
 .page.active{display:block}
 
-.hero{text-align:center;padding:4rem 2rem 3rem;max-width:680px;margin:0 auto}
-.hero h1{font-size:36px;font-weight:600;line-height:1.2;margin-bottom:1rem}
-.hero h1 em{color:#1D9E75;font-style:normal}
-.hero p{font-size:16px;color:#666;line-height:1.7;margin-bottom:2rem}
-.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.btn-primary{background:#1D9E75;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600;font-family:inherit}
-.btn-secondary{background:none;border:1px solid #ccc;padding:10px 24px;border-radius:8px;font-size:15px;cursor:pointer;color:#1a1a18;font-family:inherit}
+/* ---------------- Hero ---------------- */
+.bg-mesh{background-image:var(--gradient-mesh)}
+.hero{max-width:720px;margin:0 auto;padding:5rem 1.5rem 3rem;text-align:center}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--hairline);background:oklch(1 0 0 / 0.6);
+  backdrop-filter:blur(8px);border-radius:999px;
+  padding:6px 14px;font-size:12px;font-weight:500;color:var(--ink-soft);
+}
+.hero h1{
+  margin-top:1.5rem;font-size:46px;line-height:1.08;letter-spacing:-0.02em;
+  font-weight:400;
+}
+.hero h1 em{font-style:normal;color:var(--emerald)}
+.hero p{
+  max-width:540px;margin:1.5rem auto 0;font-size:17px;line-height:1.65;color:var(--ink-soft);
+}
+.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:2rem}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background-image:var(--gradient-emerald);color:#fff;border:none;
+  padding:13px 26px;border-radius:999px;font-size:14px;font-weight:600;
+  cursor:pointer;font-family:inherit;box-shadow:var(--shadow-emerald);
+  transition:transform .15s,box-shadow .15s;text-decoration:none;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--hairline);
+  padding:13px 26px;border-radius:999px;font-size:14px;font-weight:600;
+  cursor:pointer;color:var(--ink);font-family:inherit;text-decoration:none;
+  box-shadow:var(--shadow-soft);transition:border-color .15s,box-shadow .15s;
+}
+.btn-secondary:hover{border-color:oklch(0.22 0.02 160 / 0.2);box-shadow:var(--shadow-card)}
 
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;max-width:680px;margin:0 auto 3rem}
-.stat-card{background:#f0efe8;border-radius:8px;padding:1rem;text-align:center}
-.stat-num{font-size:28px;font-weight:600;color:#1D9E75}
-.stat-label{font-size:12px;color:#666;margin-top:4px}
+.section-wrap{max-width:880px;margin:0 auto;padding:0 1.5rem}
 
-.flow-section{max-width:680px;margin:0 auto 3rem}
-.flow-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
-.flow-diagram{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.5rem}
-.flow-step{display:flex;align-items:center;gap:16px;padding:14px 0}
-.flow-step:not(:last-child){border-bottom:0.5px dashed #e0e0d8}
-.flow-icon{width:40px;height:40px;border-radius:50%;background:#E1F5EE;color:#0F6E56;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.flow-text h3{font-size:14px;font-weight:600;margin-bottom:2px}
-.flow-text p{font-size:13px;color:#666;line-height:1.4}
+/* ---------------- Stats row ---------------- */
+.stats-row{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px;max-width:720px;margin:-0.5rem auto 3rem;padding:0 1.5rem;
+}
+.stat-card{
+  background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--radius-xl);box-shadow:var(--shadow-card);
+  padding:1.25rem;text-align:center;
+}
+.stat-num{font-family:var(--font-display);font-size:30px;color:var(--emerald-deep)}
+.stat-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-top:4px}
 
-.why-section{max-width:680px;margin:0 auto 3rem}
-.why-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
-.why-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.why-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
-.why-icon{font-size:22px;margin-bottom:8px}
-.why-card h3{font-size:14px;font-weight:600;margin-bottom:4px}
-.why-card p{font-size:13px;color:#666;line-height:1.5}
-
-.btc-ticker{max-width:680px;margin:0 auto 3rem;background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.btc-ticker-left{display:flex;align-items:center;gap:10px}
-.btc-icon{width:32px;height:32px;border-radius:50%;background:#FAEEDA;color:#854F0B;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-.btc-ticker-label{font-size:12px;color:#666}
-.btc-ticker-val{font-size:16px;font-weight:600}
-.btc-ticker-right{display:flex;gap:20px;align-items:center}
+/* ---------------- BTC ticker ---------------- */
+.btc-ticker{
+  max-width:720px;margin:0 auto 3rem;padding:0 1.5rem;
+}
+.btc-ticker-card{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-card);
+  padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+}
+.btc-ticker-left{display:flex;align-items:center;gap:12px}
+.btc-icon{
+  width:38px;height:38px;border-radius:10px;
+  background-image:var(--gradient-gold);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:17px;box-shadow:var(--shadow-soft);
+}
+.btc-ticker-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.btc-ticker-val{font-size:16px;font-weight:600;margin-top:1px}
+.btc-ticker-right{display:flex;gap:22px;align-items:center}
 .btc-stat{text-align:right}
-.btc-stat-lbl{font-size:11px;color:#666}
-.btc-stat-val{font-size:14px;font-weight:600}
-.btc-change-up{color:#0F6E56}
-.btc-change-down{color:#A32D2D}
-.btc-source{font-size:11px;color:#999}
+.btc-stat-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint)}
+.btc-stat-val{font-size:14px;font-weight:600;margin-top:1px}
+.btc-change-up{color:var(--emerald-deep)}
+.btc-change-down{color:var(--clay)}
+.btc-source{font-size:11px;color:var(--ink-faint)}
 
-.sim-section{max-width:680px;margin:0 auto 3rem}
-.sim-section h2{font-size:20px;font-weight:600;margin-bottom:0.5rem;text-align:center}
-.sim-sub{font-size:13px;color:#666;text-align:center;margin-bottom:1.5rem}
-.sim-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.5rem}
-.sim-row{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
-.sim-row label{font-size:14px;color:#666;width:140px;flex-shrink:0}
-.sim-row input[type=range]{flex:1}
-.sim-row .sim-out{font-size:14px;font-weight:600;min-width:90px;text-align:right}
-.sim-result{border-top:0.5px solid #e0e0d8;padding-top:1.25rem;margin-top:0.5rem}
-.sim-result-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-.sim-result-lbl{font-size:13px;color:#666}
-.sim-result-val{font-size:20px;font-weight:600;color:#1D9E75}
-.sim-result-sub{font-size:12px;color:#999}
-.sim-note{font-size:12px;color:#999;margin-top:1rem;line-height:1.5}
+/* ---------------- Flow section ---------------- */
+.section-heading{text-align:center;margin-bottom:2rem}
+.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.14em;color:var(--emerald-deep)}
+.section-heading h2{font-size:34px;margin-top:.4rem;font-weight:400;letter-spacing:-0.01em}
+.section-heading p{margin-top:.6rem;font-size:14px;color:var(--ink-soft);max-width:460px;margin-left:auto;margin-right:auto}
 
-.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
-.dash-header h2{font-size:20px;font-weight:600}
-.search-row{display:flex;gap:8px;margin-bottom:1.5rem}
-.search-row input{flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a18}
-.search-row button{padding:8px 16px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.flow-section{max-width:720px;margin:0 auto 3.5rem;padding:0 1.5rem}
+.flow-diagram{
+  background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--radius-2xl);box-shadow:var(--shadow-card);overflow:hidden;
+}
+.flow-step{
+  display:flex;align-items:flex-start;gap:18px;padding:18px 22px;
+  transition:background .15s;
+}
+.flow-step:hover{background:oklch(0.94 0.04 165 / 0.3)}
+.flow-step:not(:last-child){border-bottom:1px solid var(--hairline)}
+.flow-icon{
+  width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  background:var(--emerald-soft);color:var(--emerald-deep);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:600;margin-top:1px;
+}
+.flow-text h3{font-family:var(--font-sans);font-size:14.5px;font-weight:600;margin-bottom:3px;letter-spacing:0}
+.flow-text p{font-size:13px;color:var(--ink-soft);line-height:1.55}
 
-.metrics-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem}
-.metric{background:#f0efe8;border-radius:8px;padding:1rem}
-.metric-val{font-size:22px;font-weight:600}
-.metric-lbl{font-size:11px;color:#666;margin-top:2px}
-.metric.green .metric-val{color:#1D9E75}
-.metric.amber .metric-val{color:#BA7517}
-.metric.blue .metric-val{color:#185FA5}
+/* ---------------- Simulator ---------------- */
+.sim-section{max-width:720px;margin:0 auto 3.5rem;padding:0 1.5rem}
+.sim-card{
+  background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--radius-2xl);box-shadow:var(--shadow-card);overflow:hidden;
+  display:grid;grid-template-columns:1fr 1fr;
+}
+@media (max-width:680px){.sim-card{grid-template-columns:1fr}}
+.sim-inputs{padding:1.75rem}
+.sim-row{margin-bottom:1.5rem}
+.sim-row:last-child{margin-bottom:0}
+.sim-row-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.6rem}
+.sim-row label{font-size:13.5px;color:var(--ink-soft)}
+.sim-out{font-family:var(--font-display);font-size:22px;color:var(--ink)}
+input[type=range]{
+  width:100%;-webkit-appearance:none;appearance:none;height:4px;
+  background:var(--sand);border-radius:999px;outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--surface-raised);border:2px solid var(--emerald);
+  box-shadow:var(--shadow-soft);cursor:pointer;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.1)}
+input[type=range]::-moz-range-thumb{
+  width:20px;height:20px;border-radius:50%;background:var(--surface-raised);
+  border:2px solid var(--emerald);cursor:pointer;
+}
+.sim-result{background-image:var(--gradient-emerald);color:#fff;padding:1.75rem}
+.sim-result-row{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;margin-bottom:1.1rem}
+.sim-result-row:last-of-type{margin-bottom:0}
+.sim-result-lbl{font-size:13px;color:oklch(1 0 0 / 0.8)}
+.sim-result-val{font-family:var(--font-display);font-size:20px}
+.sim-result-val.primary{font-size:30px}
+.sim-note{
+  font-size:12px;line-height:1.6;color:oklch(1 0 0 / 0.8);
+  margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid oklch(1 0 0 / 0.15);
+}
+.sim-note strong{color:#fff;font-weight:600}
 
-.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem}
-.card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
-.card h3{font-size:14px;font-weight:600;margin-bottom:1rem;color:#666}
-.chart-wrap{position:relative;height:180px}
+/* ---------------- Why grid ---------------- */
+.why-section{max-width:720px;margin:0 auto 4rem;padding:0 1.5rem}
+.why-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.why-grid{grid-template-columns:1fr}}
+.why-card{
+  background:var(--surface);border:1px solid var(--hairline);
+  border-radius:var(--radius-xl);box-shadow:var(--shadow-card);
+  padding:1.4rem;transition:transform .15s,box-shadow .15s;
+}
+.why-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.why-icon{font-size:22px;margin-bottom:10px;display:block}
+.why-card h3{font-family:var(--font-sans);font-size:14.5px;font-weight:600;margin-bottom:5px}
+.why-card p{font-size:13px;color:var(--ink-soft);line-height:1.55}
 
+.landing-footer{
+  max-width:720px;margin:0 auto;padding:2rem 1.5rem 4rem;
+  text-align:center;font-size:12px;color:var(--ink-faint);
+  border-top:1px solid var(--hairline);
+}
+
+/* ---------------- Dashboard layout ---------------- */
+.dash-wrap{max-width:1180px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+.dash-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:2rem}
+.dash-header h2{font-size:40px;font-weight:400;letter-spacing:-0.01em;margin-top:.2rem}
+.dash-header p{font-size:13.5px;color:var(--ink-soft);margin-top:.5rem}
+
+.wallet-strip{
+  border:1px solid var(--emerald-soft);background:oklch(0.94 0.04 165 / 0.6);
+  border-radius:var(--radius-xl);padding:.7rem 1.25rem;font-size:13px;display:none;
+}
+.wallet-strip-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:oklch(0.38 0.11 165 / 0.8)}
+.wallet-strip-val{font-family:var(--font-display);font-size:21px;color:var(--emerald-deep);margin-top:1px}
+
+/* ---------------- Metrics ---------------- */
+.metrics-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:2rem;
+}
+@media (max-width:900px){.metrics-grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:560px){.metrics-grid{grid-template-columns:repeat(2,1fr)}}
+.metric{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-soft);padding:1.1rem 1.25rem;
+}
+.metric-val{font-family:var(--font-display);font-size:28px;color:var(--ink)}
+.metric-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);margin-top:3px}
+.metric.green .metric-val{color:var(--emerald-deep)}
+.metric.amber .metric-val{color:var(--gold)}
+.metric.blue .metric-val{color:var(--blue-deep)}
+
+/* ---------------- Cards / panels ---------------- */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:2rem}
+@media (max-width:820px){.dash-grid{grid-template-columns:1fr}}
+.card{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-card);padding:1.4rem;
+}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem}
+.card h3{
+  font-family:var(--font-sans);font-size:12.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);
+}
+.card-badge-live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--emerald)}
+.chart-wrap{position:relative;height:200px}
+
+/* ---------------- Activity feed ---------------- */
 .activity-feed{display:flex;flex-direction:column;gap:0;max-height:280px;overflow-y:auto}
-.activity-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #e0e0d8}
+.activity-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--hairline)}
 .activity-item:last-child{border-bottom:none}
-.activity-dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.activity-text{font-size:13px;flex:1}
+.activity-dot{width:7px;height:7px;border-radius:50%;background:var(--emerald);flex-shrink:0;box-shadow:0 0 0 0 oklch(0.55 0.13 165 / 0.5);animation:pulse-ring 2s infinite}
+.activity-text{font-size:13.5px;flex:1;line-height:1.4}
 .activity-text strong{font-weight:600}
-.activity-time{font-size:11px;color:#999;white-space:nowrap}
+.activity-amount{font-weight:600;color:var(--emerald-deep)}
+.activity-time{font-size:11.5px;color:var(--ink-faint);white-space:nowrap}
 
+/* ---------------- Search ---------------- */
+.search-row{display:flex;gap:10px;margin-bottom:1.75rem;flex-wrap:wrap}
+.search-input-wrap{
+  flex:1;min-width:220px;display:flex;align-items:center;gap:8px;
+  border:1px solid var(--hairline);background:var(--surface);
+  border-radius:999px;padding:9px 16px;box-shadow:var(--shadow-soft);
+  transition:border-color .15s,box-shadow .15s;
+}
+.search-input-wrap:focus-within{border-color:var(--emerald);box-shadow:0 0 0 3px oklch(0.55 0.13 165 / 0.12)}
+.search-input-wrap svg{flex-shrink:0;color:var(--ink-faint)}
+.search-row input{
+  flex:1;border:none;outline:none;background:transparent;
+  font-size:14px;font-family:inherit;color:var(--ink);
+}
+.search-row input::placeholder{color:var(--ink-faint)}
+.search-row button{
+  padding:10px 22px;background-image:var(--gradient-emerald);color:#fff;border:none;
+  border-radius:999px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  white-space:nowrap;box-shadow:var(--shadow-emerald);transition:transform .15s;
+}
+.search-row button:hover{transform:translateY(-1px)}
+.search-error{color:var(--clay);font-size:12.5px;margin:-1rem 0 1.25rem}
+
+/* ---------------- Recent list ---------------- */
+.recent-section-head{font-size:12.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin-bottom:.85rem}
+.recent-list{display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem}
+.recent-item{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  padding:1.1rem 1.3rem;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;box-shadow:var(--shadow-soft);
+  transition:border-color .15s,box-shadow .15s,transform .15s;width:100%;text-align:left;
+  font-family:inherit;
+}
+.recent-item:hover{border-color:oklch(0.55 0.13 165 / 0.4);box-shadow:var(--shadow-card);transform:translateY(-1px)}
+.recent-name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.recent-name{font-size:15px;font-weight:600}
+.recent-meta{font-size:12px;color:var(--ink-soft);margin-top:3px}
+.recent-right{text-align:right;flex-shrink:0;margin-left:1rem}
+.recent-sats{font-size:13.5px;font-weight:600;color:var(--emerald-deep)}
+.recent-members{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
+
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--ink-soft);font-size:13.5px}
+.empty-card{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-card);padding:3rem 1.5rem;text-align:center;
+}
+.empty-card-icon{
+  width:48px;height:48px;border-radius:14px;background:var(--emerald-soft);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;color:var(--emerald-deep);
+}
+.empty-card h3{font-family:var(--font-display);font-size:20px;font-weight:400}
+.empty-card p{font-size:13.5px;color:var(--ink-soft);margin-top:.4rem;max-width:320px;margin-left:auto;margin-right:auto}
+
+.shimmer-row{height:78px;border-radius:var(--radius-xl);background:linear-gradient(90deg,var(--sand) 0%,oklch(0.97 0.01 95) 50%,var(--sand) 100%);background-size:200% 100%;animation:shimmer 1.6s ease-in-out infinite;margin-bottom:10px}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+/* ---------------- Badges ---------------- */
+.badge{
+  display:inline-flex;align-items:center;padding:3px 11px;border-radius:999px;
+  font-size:11px;font-weight:600;
+}
+.badge.active{background:var(--emerald-soft);color:var(--emerald-deep)}
+.badge.waiting{background:var(--gold-soft);color:var(--gold)}
+.badge.completed{background:var(--blue-soft);color:var(--blue-deep)}
+
+.paid-badge{font-size:11px;padding:3px 10px;border-radius:999px;font-weight:600}
+.paid-badge.paid{background:var(--emerald-soft);color:var(--emerald-deep)}
+.paid-badge.pending{background:var(--gold-soft);color:var(--gold)}
+
+/* ---------------- Detail view ---------------- */
 .tontine-detail{display:none}
 .tontine-detail.active{display:block}
-.detail-header{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem;margin-bottom:16px}
-.detail-title{font-size:20px;font-weight:600;margin-bottom:4px}
-.detail-meta{font-size:13px;color:#666}
-.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:8px}
-.badge.active{background:#E1F5EE;color:#0F6E56}
-.badge.waiting{background:#FAEEDA;color:#854F0B}
-.badge.completed{background:#E6F1FB;color:#185FA5}
+.back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--hairline);
+  padding:8px 16px;border-radius:999px;font-size:13.5px;font-weight:500;
+  cursor:pointer;font-family:inherit;color:var(--ink-soft);
+  box-shadow:var(--shadow-soft);margin-bottom:1.4rem;transition:color .15s,border-color .15s;
+}
+.back-btn:hover{color:var(--ink);border-color:oklch(0.22 0.02 160 / 0.2)}
 
-.members-list{display:flex;flex-direction:column;gap:8px}
-.member-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #e0e0d8}
+.detail-header{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-card);padding:1.4rem 1.6rem;margin-bottom:1.4rem;
+}
+.detail-title{font-family:var(--font-display);font-size:28px;font-weight:400}
+.detail-meta{font-size:13.5px;color:var(--ink-soft);margin-top:.4rem}
+
+.members-list{display:flex;flex-direction:column;gap:0}
+.member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)}
 .member-row:last-child{border-bottom:none}
-.member-info{display:flex;align-items:center;gap:8px}
-.avatar{width:32px;height:32px;border-radius:50%;background:#E1F5EE;color:#0F6E56;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.member-info{display:flex;align-items:center;gap:10px}
+.avatar{
+  width:34px;height:34px;border-radius:50%;background:var(--emerald-soft);color:var(--emerald-deep);
+  font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
 .member-name{font-size:14px;font-weight:600}
-.member-sub{font-size:12px;color:#666}
-.paid-badge{font-size:12px;padding:2px 8px;border-radius:20px;font-weight:600}
-.paid-badge.paid{background:#E1F5EE;color:#0F6E56}
-.paid-badge.pending{background:#FAEEDA;color:#854F0B}
+.member-sub{font-size:11.5px;color:var(--ink-faint);margin-top:1px}
 
-.round-progress{margin-top:12px}
-.progress-bar-wrap{background:#f0efe8;border-radius:20px;height:8px;overflow:hidden;margin-bottom:6px}
-.progress-bar{height:100%;background:#1D9E75;border-radius:20px;transition:width 0.3s}
-.progress-label{font-size:12px;color:#666}
+.round-progress{margin-top:14px}
+.progress-bar-wrap{background:var(--sand);border-radius:999px;height:8px;overflow:hidden;margin-bottom:6px}
+.progress-bar{height:100%;background-image:var(--gradient-emerald);border-radius:999px;transition:width .4s}
+.progress-label{font-size:11.5px;color:var(--ink-faint)}
 
-.back-btn{background:none;border:1px solid #ccc;padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:#1a1a18;margin-bottom:1rem}
+.timeline-card{
+  background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-card);padding:1.4rem;margin-bottom:1.4rem;
+}
 
-.empty{text-align:center;padding:2rem 1rem;color:#666;font-size:14px}
-
-.recent-list{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
-.recent-item{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color 0.15s}
-.recent-item:hover{border-color:#1D9E75}
-.recent-name{font-size:15px;font-weight:600}
-.recent-meta{font-size:12px;color:#666;margin-top:2px}
-.recent-right{text-align:right}
-.recent-sats{font-size:14px;font-weight:600;color:#1D9E75}
-.recent-members{font-size:12px;color:#666}
-
-.timeline-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem;margin-bottom:16px}
-.timeline-list{display:flex;flex-direction:column;gap:0}
-.timeline-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid #e0e0d8}
-.timeline-row:last-child{border-bottom:none}
-.timeline-marker{width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0}
-.timeline-content{flex:1;font-size:13px}
-.timeline-amount{font-size:13px;font-weight:600;color:#1D9E75}
-
-.wallet-strip{background:#E1F5EE;border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;font-size:13px}
-.wallet-strip strong{color:#0F6E56;font-size:15px}
+.history-block{margin-bottom:1.1rem}
+.history-block:last-child{margin-bottom:0}
+.history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.history-head span{font-size:13.5px;font-weight:600}
+.history-payments{display:flex;flex-direction:column;gap:4px;padding-left:8px;border-left:2px solid var(--hairline)}
+.history-payment-row{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft)}
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="logo"><span>⚡</span> TontineBot</div>
-  <div class="nav-tabs">
-    <span class="live-indicator" id="live-ind" style="display:none"><span class="live-dot"></span>Live</span>
-    <button class="nav-tab active" onclick="showPage('landing')">Présentation</button>
-    <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
+  <div class="nav-inner">
+    <a href="#" class="logo" onclick="showPage('landing');return false;">
+      <span class="logo-mark">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" fill="currentColor"/></svg>
+      </span>
+      <span class="logo-text">Tontine<span>Bot</span></span>
+    </a>
+    <div class="nav-tabs">
+      <span class="live-indicator" id="live-ind"><span class="live-dot"></span>Live</span>
+      <button class="nav-tab active" onclick="showPage('landing')">Présentation</button>
+      <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
+    </div>
   </div>
 </nav>
 
+<!-- ================= LANDING PAGE ================= -->
 <div class="page active" id="page-landing">
-  <div class="hero">
-    <h1>La tontine de <em>confiance</em>,<br>sans intermédiaire humain</h1>
-    <p>TontineBot automatise les tontines communautaires via WhatsApp et Lightning Network. Le bot gère l'argent personne ne peut fuir avec la caisse.</p>
-    <div class="cta-row">
-      <button class="btn-primary" onclick="showPage('dashboard')">Voir le dashboard</button>
-      <a href="https://wa.me/22943267102" class="btn-secondary" target="_blank" style="text-decoration: none;">WhatsApp ⚡TontineBot</a>
+  <div class="bg-mesh">
+    <div class="hero">
+      <span class="hero-badge"><span class="live-dot"></span>Lightning ⚡ + WhatsApp, en direct du Bénin</span>
+      <h1>La tontine de <em>confiance</em>, sans intermédiaire humain.</h1>
+      <p>TontineBot automatise les tontines communautaires sur WhatsApp et règle chaque tour sur le Lightning Network. Le bot tient la caisse personne ne peut s'enfuir avec l'argent du groupe.</p>
+      <div class="cta-row">
+        <button class="btn-primary" onclick="showPage('dashboard')">
+          Voir le dashboard
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <a href="https://wa.me/22943267102" class="btn-secondary" target="_blank" rel="noreferrer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="color:var(--emerald)"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 5L2 22l5.2-1.3c1.4.7 3 1.1 4.8 1.1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
+          Démarrer sur WhatsApp
+        </a>
+      </div>
     </div>
   </div>
 
@@ -185,28 +498,27 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
   </div>
 
   <div class="btc-ticker" id="btc-ticker" style="display:none">
-    <div class="btc-ticker-left">
-      <div class="btc-icon">₿</div>
-      <div>
-        <div class="btc-ticker-label">1 satoshi vaut</div>
-        <div class="btc-ticker-val" id="btc-sat-val">—</div>
+    <div class="btc-ticker-card">
+      <div class="btc-ticker-left">
+        <div class="btc-icon">₿</div>
+        <div>
+          <div class="btc-ticker-label">1 satoshi vaut</div>
+          <div class="btc-ticker-val" id="btc-sat-val">—</div>
+        </div>
       </div>
-    </div>
-    <div class="btc-ticker-right">
-      <div class="btc-stat">
-        <div class="btc-stat-lbl">1 BTC</div>
-        <div class="btc-stat-val" id="btc-full-val">—</div>
+      <div class="btc-ticker-right">
+        <div class="btc-stat"><div class="btc-stat-lbl">1 BTC</div><div class="btc-stat-val" id="btc-full-val">—</div></div>
+        <div class="btc-stat"><div class="btc-stat-lbl">24h</div><div class="btc-stat-val" id="btc-change">—</div></div>
+        <div class="btc-source" id="btc-source">CoinGecko</div>
       </div>
-      <div class="btc-stat">
-        <div class="btc-stat-lbl">24h</div>
-        <div class="btc-stat-val" id="btc-change">—</div>
-      </div>
-      <div class="btc-source" id="btc-source">CoinGecko</div>
     </div>
   </div>
 
   <div class="flow-section">
-    <h2>Comment ça marche</h2>
+    <div class="section-heading">
+      <div class="eyebrow">Mécanique</div>
+      <h2>Comment ça marche</h2>
+    </div>
     <div class="flow-diagram">
       <div class="flow-step">
         <div class="flow-icon">1</div>
@@ -232,106 +544,133 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
   </div>
 
   <div class="sim-section">
-    <h2>Simule ta tontine</h2>
-    <p class="sim-sub">Calcul réel basé sur le mécanisme de TontineBot — pas un rendement inventé</p>
+    <div class="section-heading">
+      <div class="eyebrow">Simulateur</div>
+      <h2>Simule ta tontine</h2>
+      <p>Calcul réel basé sur le mécanisme de TontineBot — pas un rendement inventé.</p>
+    </div>
     <div class="sim-card">
-      <div class="sim-row">
-        <label>Montant par tour</label>
-        <input type="range" min="100" max="500000" step="100" value="5000" id="sim-amount"/>
-        <span class="sim-out" id="sim-amount-out">5 000 sats</span>
-      </div>
-      <div class="sim-row">
-        <label>Nombre de membres</label>
-        <input type="range" min="2" max="10" step="1" value="5" id="sim-members"/>
-        <span class="sim-out" id="sim-members-out">5</span>
+      <div class="sim-inputs">
+        <div class="sim-row">
+          <div class="sim-row-head"><label>Montant par tour</label><span class="sim-out" id="sim-amount-out">5 000 sats</span></div>
+          <input type="range" min="100" max="500000" step="100" value="5000" id="sim-amount"/>
+        </div>
+        <div class="sim-row">
+          <div class="sim-row-head"><label>Nombre de membres</label><span class="sim-out" id="sim-members-out">5</span></div>
+          <input type="range" min="2" max="10" step="1" value="5" id="sim-members"/>
+        </div>
       </div>
       <div class="sim-result">
-        <div class="sim-result-row">
-          <span class="sim-result-lbl">Chaque membre verse au total</span>
-          <span class="sim-result-val" id="sim-total-paid">—</span>
-        </div>
-        <div class="sim-result-row">
-          <span class="sim-result-lbl">Chaque membre reçoit à son tour</span>
-          <span class="sim-result-val" id="sim-total-received">—</span>
-        </div>
-        <div class="sim-result-row">
-          <span class="sim-result-lbl">Équivalent FCFA (taux live)</span>
-          <span class="sim-result-val" id="sim-fcfa">—</span>
-        </div>
+        <div class="sim-result-row"><span class="sim-result-lbl">Chaque membre verse au total</span><span class="sim-result-val" id="sim-total-paid">—</span></div>
+        <div class="sim-result-row"><span class="sim-result-lbl">Chaque membre reçoit à son tour</span><span class="sim-result-val primary" id="sim-total-received">—</span></div>
+        <div class="sim-result-row"><span class="sim-result-lbl">Équivalent FCFA (taux live)</span><span class="sim-result-val" id="sim-fcfa">—</span></div>
         <p class="sim-note">Une tontine ne génère pas d'intérêt — c'est de l'épargne mutualisée. Chaque membre verse <strong id="sim-note-amount">5 000</strong> sats à chacun des <strong id="sim-note-rounds">5</strong> tours, et reçoit l'intégralité du pot une seule fois, à son tour assigné.</p>
       </div>
     </div>
   </div>
 
   <div class="why-section">
-    <h2>Pourquoi TontineBot</h2>
+    <div class="section-heading">
+      <div class="eyebrow">Pourquoi</div>
+      <h2>Conçu pour durer</h2>
+    </div>
     <div class="why-grid">
-      <div class="why-card"><div class="why-icon">🔒</div><h3>Zéro confiance aveugle</h3><p>Le bot est le tiers neutre. Personne ne touche l'argent des autres.</p></div>
-      <div class="why-card"><div class="why-icon">⚡</div><h3>Lightning Network</h3><p>Paiements instantanés, frais quasi nuls, pas de banque nécessaire.</p></div>
-      <div class="why-card"><div class="why-icon">📱</div><h3>WhatsApp natif</h3><p>Pas d'app à télécharger. Tout se passe dans WhatsApp que tout le monde a.</p></div>
-      <div class="why-card"><div class="why-icon">🌍</div><h3>Inclusion financière</h3><p>Conçu pour l'Afrique de l'Ouest. MoMo en perspective via Flash API.</p></div>
+      <div class="why-card"><span class="why-icon">🔒</span><h3>Zéro confiance aveugle</h3><p>Le bot est le tiers neutre. Personne ne touche l'argent des autres.</p></div>
+      <div class="why-card"><span class="why-icon">⚡</span><h3>Lightning Network</h3><p>Paiements instantanés, frais quasi nuls, pas de banque nécessaire.</p></div>
+      <div class="why-card"><span class="why-icon">📱</span><h3>WhatsApp natif</h3><p>Pas d'app à télécharger. Tout se passe dans WhatsApp que tout le monde a.</p></div>
+      <div class="why-card"><span class="why-icon">🌍</span><h3>Inclusion financière</h3><p>Conçu pour l'Afrique de l'Ouest. MoMo en perspective via Flash API.</p></div>
     </div>
   </div>
+
+  <div class="landing-footer">TontineBot · Bénin · Conçu pour l'Afrique de l'Ouest · Lightning ⚡ + WhatsApp</div>
 </div>
 
+<!-- ================= DASHBOARD PAGE ================= -->
 <div class="page" id="page-dashboard">
-  <div id="dash-main">
-    <div class="dash-header"><h2>Dashboard</h2></div>
+  <div class="dash-wrap">
 
-    <div class="wallet-strip" id="wallet-strip" style="display:none">
-      <span>💼 Wallet du bot (LNbits)</span>
-      <strong id="wallet-balance">—</strong>
-    </div>
-
-    <div class="metrics-grid">
-      <div class="metric green"><div class="metric-val" id="d-active">—</div><div class="metric-lbl">Actives</div></div>
-      <div class="metric"><div class="metric-val" id="d-total">—</div><div class="metric-lbl">Total créées</div></div>
-      <div class="metric amber"><div class="metric-val" id="d-sats">—</div><div class="metric-lbl">Sats gérés</div></div>
-      <div class="metric"><div class="metric-val" id="d-members">—</div><div class="metric-lbl">Membres</div></div>
-      <div class="metric blue"><div class="metric-val" id="d-pending">—</div><div class="metric-lbl">En attente</div></div>
-    </div>
-
-    <div class="dash-grid">
-      <div class="card"><h3>Répartition des tontines</h3><div class="chart-wrap"><canvas id="chart-status"></canvas></div></div>
-      <div class="card"><h3>Activité en direct</h3><div class="activity-feed" id="activity-feed"><div class="empty">Aucune activité</div></div></div>
-    </div>
-
-    <div class="search-row">
-      <input type="text" id="search-input" placeholder="Code tontine (ex: TONT-4X7K)" onkeydown="if(event.key==='Enter')searchTontine()"/>
-      <button onclick="searchTontine()">Rechercher</button>
-    </div>
-    <div id="search-error" style="color:#c0392b;font-size:13px;margin-bottom:12px;display:none"></div>
-
-    <div>
-      <p style="font-size:13px;color:#666;margin-bottom:12px">Tontines récentes</p>
-      <div class="recent-list" id="recent-list"><div class="empty">Chargement...</div></div>
-    </div>
-  </div>
-
-  <div id="dash-detail" class="tontine-detail">
-    <button class="back-btn" onclick="showMain()">← Retour</button>
-    <div class="detail-header">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-        <span class="detail-title" id="det-name">—</span>
-        <span class="badge" id="det-badge">—</span>
+    <div id="dash-main">
+      <div class="dash-header">
+        <div>
+          <div class="eyebrow">Vue d'ensemble</div>
+          <h2>Dashboard</h2>
+          <p>Mises à jour automatiques toutes les 5 secondes.</p>
+        </div>
+        <div class="wallet-strip" id="wallet-strip">
+          <div class="wallet-strip-label">Wallet du bot · LNbits</div>
+          <div class="wallet-strip-val" id="wallet-balance">—</div>
+        </div>
       </div>
-      <div class="detail-meta" id="det-meta">—</div>
+
+      <div class="metrics-grid">
+        <div class="metric green"><div class="metric-val" id="d-active">—</div><div class="metric-lbl">Actives</div></div>
+        <div class="metric"><div class="metric-val" id="d-total">—</div><div class="metric-lbl">Total créées</div></div>
+        <div class="metric amber"><div class="metric-val" id="d-sats">—</div><div class="metric-lbl">Sats gérés</div></div>
+        <div class="metric"><div class="metric-val" id="d-members">—</div><div class="metric-lbl">Membres</div></div>
+        <div class="metric blue"><div class="metric-val" id="d-pending">—</div><div class="metric-lbl">En attente</div></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-head"><h3>Répartition des tontines</h3></div>
+          <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Activité en direct</h3><span class="card-badge-live"><span class="live-dot"></span>Live</span></div>
+          <div class="activity-feed" id="activity-feed"><div class="empty">Aucune activité</div></div>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" id="search-input" placeholder="Code tontine (ex: TONT-4X7K)" onkeydown="if(event.key==='Enter')searchTontine()"/>
+        </div>
+        <button onclick="searchTontine()">Rechercher</button>
+      </div>
+      <div id="search-error" class="search-error" style="display:none"></div>
+
+      <div>
+        <div class="recent-section-head">Tontines récentes</div>
+        <div class="recent-list" id="recent-list"><div class="shimmer-row"></div><div class="shimmer-row"></div><div class="shimmer-row"></div></div>
+      </div>
     </div>
 
-    <div class="dash-grid">
-      <div class="card"><h3>Tour en cours</h3><div id="det-round"><div class="empty">Aucun tour actif</div></div></div>
-      <div class="card"><h3>Membres</h3><div class="members-list" id="det-members"></div></div>
+    <div id="dash-detail" class="tontine-detail">
+      <button class="back-btn" onclick="showMain()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Retour
+      </button>
+      <div class="detail-header">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+          <span class="detail-title" id="det-name">—</span>
+          <span class="badge" id="det-badge">—</span>
+        </div>
+        <div class="detail-meta" id="det-meta">—</div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-head"><h3>Tour en cours</h3></div>
+          <div id="det-round"><div class="empty">Aucun tour actif</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Membres</h3></div>
+          <div class="members-list" id="det-members"></div>
+        </div>
+      </div>
+
+      <div class="timeline-card">
+        <div class="card-head"><h3>Évolution des sats collectés</h3></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-timeline"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><h3>Historique détaillé des tours</h3></div>
+        <div id="det-history"></div>
+      </div>
     </div>
 
-    <div class="timeline-card">
-      <h3 style="font-size:14px;font-weight:600;margin-bottom:1rem;color:#666">Évolution des sats collectés</h3>
-      <div class="chart-wrap" style="height:160px"><canvas id="chart-timeline"></canvas></div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <h3>Historique détaillé des tours</h3>
-      <div id="det-history"></div>
-    </div>
   </div>
 </div>
 
@@ -339,6 +678,10 @@ nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:fle
 let currentDetailCode = null;
 let dashboardInterval = null;
 let chartStatus=null, chartTimeline=null;
+
+const COLOR_EMERALD = 'oklch(0.55 0.13 165)';
+const COLOR_GOLD = 'oklch(0.74 0.13 78)';
+const COLOR_BLUE = 'oklch(0.55 0.1 220)';
 
 function showPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
@@ -390,7 +733,7 @@ async function loadDashboard(){
     document.getElementById('s-sats').textContent = fmtSats(stats.total_sats_managed)+' sats';
 
     if(stats.wallet_balance !== null && stats.wallet_balance !== undefined){
-      document.getElementById('wallet-strip').style.display='flex';
+      document.getElementById('wallet-strip').style.display='block';
       document.getElementById('wallet-balance').textContent = stats.wallet_balance.toLocaleString('fr-FR')+' sats';
     }
 
@@ -408,7 +751,11 @@ function renderStatusChart(active, waiting, completed){
     ctx.canvas.parentElement.innerHTML = '<div class="empty">Aucune donnée encore</div>';
     return;
   }
-  chartStatus = new Chart(ctx,{type:'doughnut',data:{labels:['En cours','En attente','Terminées'],datasets:[{data:[active,waiting,completed],backgroundColor:['#1D9E75','#EF9F27','#378ADD'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}},cutout:'65%',responsive:true,maintainAspectRatio:false}});
+  chartStatus = new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['En cours','En attente','Terminées'],datasets:[{data:[active,waiting,completed],backgroundColor:[COLOR_EMERALD,COLOR_GOLD,COLOR_BLUE],borderWidth:0}]},
+    options:{plugins:{legend:{position:'bottom',labels:{font:{size:12,family:'Inter'},padding:14,usePointStyle:true,pointStyle:'circle'}}},cutout:'68%',responsive:true,maintainAspectRatio:false}
+  });
 }
 
 function renderActivity(activity){
@@ -417,7 +764,7 @@ function renderActivity(activity){
   el.innerHTML = activity.map(a=>`
     <div class="activity-item">
       <div class="activity-dot"></div>
-      <div class="activity-text"><strong>${a.display}</strong> a payé ${a.amount_sats} sats — ${a.tontine_name}</div>
+      <div class="activity-text"><strong>${a.display}</strong> a payé <span class="activity-amount">${a.amount_sats.toLocaleString('fr-FR')} sats</span> — ${a.tontine_name}</div>
       <div class="activity-time">${timeAgo(a.paid_at)}</div>
     </div>
   `).join('');
@@ -425,18 +772,28 @@ function renderActivity(activity){
 
 function renderRecent(recent){
   const el = document.getElementById('recent-list');
-  if(!recent.length){el.innerHTML='<div class="empty">Aucune tontine pour le moment</div>';return;}
+  if(!recent.length){
+    el.innerHTML = `
+      <div class="empty-card">
+        <div class="empty-card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Aucune tontine pour le moment</h3>
+        <p>Crée la première sur WhatsApp en tapant CREER au bot.</p>
+      </div>`;
+    return;
+  }
   el.innerHTML = recent.map(t=>`
-    <div class="recent-item" onclick="loadDetail('${t.code}')">
+    <button class="recent-item" onclick="loadDetail('${t.code}')">
       <div>
-        <div class="recent-name">${t.name} <span class="badge ${t.status}">${statusLabel(t.status)}</span></div>
+        <div class="recent-name-row"><span class="recent-name">${t.name}</span><span class="badge ${t.status}">${statusLabel(t.status)}</span></div>
         <div class="recent-meta">${t.code} · Tour ${t.current_round||0}/${t.max_members}</div>
       </div>
       <div class="recent-right">
         <div class="recent-sats">${fmtSats(t.amount_sats)} sats/tour</div>
         <div class="recent-members">${t.member_count}/${t.max_members} membres</div>
       </div>
-    </div>
+    </button>
   `).join('');
 }
 
@@ -464,20 +821,20 @@ async function loadDetail(code, silent){
   badge.className = 'badge '+data.status;
 
   const freq = {daily:'chaque jour',weekly:'chaque semaine',monthly:'chaque mois'};
-  document.getElementById('det-meta').textContent = `Code: ${data.code} · ${data.amount_sats} sats/tour · ${freq[data.frequency]||data.frequency} · ${data.members.length}/${data.max_members} membres`;
+  document.getElementById('det-meta').textContent = `${data.code} · ${data.amount_sats.toLocaleString('fr-FR')} sats/tour · ${freq[data.frequency]||data.frequency} · ${data.members.length}/${data.max_members} membres`;
 
   const roundEl = document.getElementById('det-round');
   if(data.current_round_data && data.status==='active'){
     const r = data.current_round_data;
     const pct = Math.round(r.paid_count/r.total_members*100);
     roundEl.innerHTML = `
-      <p style="font-size:14px;margin-bottom:12px">Tour <strong>${r.round_number}/${data.max_members}</strong> — démarré ${timeAgo(r.started_at)}</p>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-bottom:0">Tour <strong style="color:var(--ink)">${r.round_number}/${data.max_members}</strong> — démarré ${timeAgo(r.started_at)}</p>
       <div class="round-progress">
         <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
         <div class="progress-label">${r.paid_count}/${r.total_members} membres ont payé</div>
       </div>
-      <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
-        ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span>${p.display}</span><span class="paid-badge ${p.status}">${p.status==='paid'?'Payé '+timeAgo(p.paid_at):'En attente'}</span></div>`).join('')}
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:0">
+        ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:7px 0;border-bottom:1px solid var(--hairline)"><span>${p.display}</span><span class="paid-badge ${p.status}">${p.status==='paid'?'Payé '+timeAgo(p.paid_at):'En attente'}</span></div>`).join('')}
       </div>
     `;
   } else {
@@ -500,17 +857,17 @@ async function loadDetail(code, silent){
   if(!data.rounds_history.length){
     histEl.innerHTML='<div class="empty">Aucun tour encore</div>';
   } else {
-    histEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${data.rounds_history.map(r=>`
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:14px;font-weight:600">Tour ${r.round_number}</span>
+    histEl.innerHTML = data.rounds_history.map(r=>`
+      <div class="history-block">
+        <div class="history-head">
+          <span>Tour ${r.round_number}</span>
           <span class="paid-badge ${r.status==='completed'?'paid':'pending'}">${statusLabel(r.status)}</span>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;padding-left:8px">
-          ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:12px;color:#666"><span>${p.display}</span><span>${p.status==='paid'?(p.paid_at||'').replace('T',' ').slice(0,16):'en attente'}</span></div>`).join('')}
+        <div class="history-payments">
+          ${r.payments.map(p=>`<div class="history-payment-row"><span>${p.display}</span><span>${p.status==='paid'?(p.paid_at||'').replace('T',' ').slice(0,16):'en attente'}</span></div>`).join('')}
         </div>
       </div>
-    `).join('')}</div>`;
+    `).join('');
   }
 }
 
@@ -525,8 +882,8 @@ function renderTimelineChart(timeline){
   const data = timeline.map(t=>t.cumulative);
   chartTimeline = new Chart(ctx,{
     type:'line',
-    data:{labels,datasets:[{data,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#1D9E75'}]},
-    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11}}},x:{grid:{display:false},ticks:{font:{size:11}}}},responsive:true,maintainAspectRatio:false}
+    data:{labels,datasets:[{data,borderColor:COLOR_EMERALD,backgroundColor:'oklch(0.55 0.13 165 / 0.1)',fill:true,tension:0.35,pointRadius:3,pointBackgroundColor:COLOR_EMERALD,pointBorderColor:'#fff',pointBorderWidth:1.5}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11,family:'Inter'}}},x:{grid:{display:false},ticks:{font:{size:11,family:'Inter'}}}},responsive:true,maintainAspectRatio:false}
   });
 }
 
@@ -545,7 +902,7 @@ async function loadBtcRate(){
   if(!rate) return;
   lastBtcRate = rate;
 
-  document.getElementById('btc-ticker').style.display='flex';
+  document.getElementById('btc-ticker').style.display='block';
   document.getElementById('btc-sat-val').textContent = rate.sat_fcfa.toFixed(2)+' FCFA';
   document.getElementById('btc-full-val').textContent = Math.round(rate.btc_fcfa).toLocaleString('fr-FR')+' FCFA';
 
@@ -553,6 +910,7 @@ async function loadBtcRate(){
   const sign = rate.change_24h >= 0 ? '+' : '';
   changeEl.textContent = sign+rate.change_24h+'%';
   changeEl.className = 'btc-stat-val '+(rate.change_24h>=0?'btc-change-up':'btc-change-down');
+  if(rate.source) document.getElementById('btc-source').textContent = rate.source;
 
   updateSimulator();
 }
