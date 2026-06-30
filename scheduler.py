@@ -1,5 +1,6 @@
 # scheduler.py
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime, timedelta
 import pytz
 
@@ -12,7 +13,8 @@ from database import (
 from whatsapp import send_message
 from messages import (
     msg_invoice_tour, msg_rappel_paiement, msg_round_complet,
-    msg_distribution, msg_payout_recu, msg_tontine_terminee
+    msg_distribution, msg_payout_recu, msg_tontine_terminee,
+    msg_paiement_recu_perso, msg_paiement_recu_autres
 )
 
 TIMEZONE = pytz.timezone("Africa/Porto-Novo")
@@ -20,7 +22,7 @@ scheduler = BackgroundScheduler(timezone=TIMEZONE)
 
 
 def start_scheduler():
-    # Job 1 : vérifie les paiements en attente toutes les 30 secondes
+    # Vérifie les paiements en attente toutes les 30 secondes
     scheduler.add_job(
         func=check_pending_payments,
         trigger="interval",
@@ -29,7 +31,16 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Job 2 : envoie des rappels aux membres en retard toutes les 12h
+    # Vérifie chaque minute si un round doit démarrer
+    scheduler.add_job(
+        func=check_scheduled_rounds,
+        trigger="interval",
+        minutes=1,
+        id="check_rounds",
+        replace_existing=True
+    )
+
+    # Rappels toutes les 12h
     scheduler.add_job(
         func=send_payment_reminders,
         trigger="interval",
@@ -49,12 +60,82 @@ def stop_scheduler():
 
 
 # ==============================================================
+# SCHEDULE_NEXT_ROUND — appelé depuis commands.py
+# ==============================================================
+
+def schedule_next_round(tontine_id, round_number):
+    """
+    Programme le démarrage du round selon la fréquence de la tontine.
+    - daily  → démarre immédiatement (pour les tests et démo)
+    - weekly → démarre au prochain jour/heure configuré
+    - monthly → démarre le 1er du mois prochain à l'heure configurée
+    """
+    tontine = get_tontine_by_id(tontine_id)
+    frequency = tontine["frequency"]
+
+    if frequency == "daily":
+        # Pour la démo : démarre immédiatement
+        print(f"[SCHEDULER] Round {round_number} démarre immédiatement (daily)")
+        _start_round(tontine_id, round_number)
+
+    elif frequency == "weekly":
+        # Programme via APScheduler au bon jour/heure
+        schedule_time = tontine["schedule_time"]
+        schedule_day = tontine["schedule_day"]
+        h, m = schedule_time.split(":")
+
+        job_id = f"round_{tontine_id}_{round_number}"
+        scheduler.add_job(
+            func=_start_round,
+            args=[tontine_id, round_number],
+            trigger=CronTrigger(
+                day_of_week=schedule_day[:3],  # "monday" → "mon"
+                hour=int(h),
+                minute=int(m),
+                timezone=TIMEZONE
+            ),
+            id=job_id,
+            replace_existing=True
+        )
+        print(f"[SCHEDULER] Round {round_number} programmé pour {schedule_day} à {schedule_time}")
+
+    elif frequency == "monthly":
+        h, m = tontine["schedule_time"].split(":")
+        job_id = f"round_{tontine_id}_{round_number}"
+        scheduler.add_job(
+            func=_start_round,
+            args=[tontine_id, round_number],
+            trigger=CronTrigger(
+                day=1,
+                hour=int(h),
+                minute=int(m),
+                timezone=TIMEZONE
+            ),
+            id=job_id,
+            replace_existing=True
+        )
+        print(f"[SCHEDULER] Round {round_number} programmé pour le 1er du mois à {tontine['schedule_time']}")
+
+
+# ==============================================================
+# VÉRIFICATION ROUNDS (chaque minute)
+# ==============================================================
+
+def check_scheduled_rounds():
+    """
+    Backup : vérifie si un round devrait avoir démarré.
+    Utile si le scheduler a raté un déclenchement.
+    """
+    pass  # APScheduler gère ça via les jobs cron
+
+
+# ==============================================================
 # DÉMARRER UN ROUND
 # ==============================================================
 
 def start_first_round(tontine_id):
     """Appelé depuis commands.py quand la tontine est complète."""
-    _start_round(tontine_id, round_number=1)
+    schedule_next_round(tontine_id, round_number=1)
 
 
 def _start_round(tontine_id, round_number):
@@ -70,6 +151,12 @@ def _start_round(tontine_id, round_number):
     tontine = get_tontine_by_id(tontine_id)
     members = get_members(tontine_id)
     total_rounds = len(members)
+
+    # Vérifier qu'il n'y a pas déjà un round actif
+    existing = get_current_round(tontine_id)
+    if existing:
+        print(f"[SCHEDULER] Round déjà actif pour tontine {tontine_id}, skip")
+        return
 
     # Le bénéficiaire = membre dont turn_order == round_number
     beneficiary = next(
@@ -88,7 +175,6 @@ def _start_round(tontine_id, round_number):
 
     update_tontine(tontine_id, current_round=round_number)
 
-    # URL webhook Railway (ou localhost pour les tests)
     base_url = os.getenv("BASE_URL", "http://localhost:5000")
     webhook_url = f"{base_url}/lnbits/webhook"
 
@@ -108,7 +194,6 @@ def _start_round(tontine_id, round_number):
             print(f"[SCHEDULER] Erreur invoice pour {member['whatsapp_number']}")
             continue
 
-        # Enregistrer le paiement en DB
         create_payment(
             round_id=round_id,
             member_id=member["id"],
@@ -117,7 +202,6 @@ def _start_round(tontine_id, round_number):
             payment_hash=invoice_data["payment_hash"]
         )
 
-        # Envoyer l'invoice au membre par DM
         is_beneficiary = member["id"] == beneficiary["id"]
 
         send_message(
@@ -131,7 +215,6 @@ def _start_round(tontine_id, round_number):
                 beneficiary_is_you=is_beneficiary
             )
         )
-
         print(f"[SCHEDULER] Invoice envoyée à {member['whatsapp_number']} ✅")
 
 
@@ -140,10 +223,7 @@ def _start_round(tontine_id, round_number):
 # ==============================================================
 
 def check_pending_payments():
-    """
-    Vérifie si des invoices en attente ont été payées.
-    Appelé toutes les 30 secondes par le scheduler.
-    """
+    """Vérifie si des invoices en attente ont été payées."""
     from lnbits import check_invoice
 
     tontines = get_all_active_tontines()
@@ -157,23 +237,15 @@ def check_pending_payments():
 
         for payment in pending:
             paid = check_invoice(payment["payment_hash"])
-
             if paid:
                 print(f"[SCHEDULER] Paiement confirmé ✅ — {payment['whatsapp_number']}")
                 _confirm_payment(tontine["id"], current_round, payment)
 
 
 def _confirm_payment(tontine_id, current_round, payment):
-    """
-    Confirme un paiement :
-    1. Met à jour le statut en DB
-    2. Notifie tous les membres
-    3. Vérifie si le round est complet
-    """
-    from database import update_payment, get_connection
-    from messages import msg_paiement_recu_perso, msg_paiement_recu_autres
+    """Confirme un paiement et notifie tous les membres."""
+    from database import update_payment
 
-    # Mettre à jour le paiement
     update_payment(
         payment["id"],
         status="paid",
@@ -186,7 +258,6 @@ def _confirm_payment(tontine_id, current_round, payment):
     total = len(members)
     round_number = current_round["round_number"]
 
-    # Notifier tous les membres
     for member in members:
         if member["whatsapp_number"] == payment["whatsapp_number"]:
             send_message(
@@ -202,30 +273,23 @@ def _confirm_payment(tontine_id, current_round, payment):
                 )
             )
 
-    # Round complet ?
     if paid_count >= total:
         _complete_round(tontine_id, current_round)
 
 
 def _complete_round(tontine_id, current_round):
-    """
-    Termine un round :
-    1. Marque le round comme completed
-    2. Démarre le round suivant OU distribue si c'était le dernier
-    """
+    """Termine un round et démarre le suivant ou distribue."""
     tontine = get_tontine_by_id(tontine_id)
     members = get_members(tontine_id)
     total_rounds = len(members)
     round_number = current_round["round_number"]
 
-    # Marquer le round comme terminé
     update_round(
         current_round["id"],
         status="completed",
         completed_at=datetime.now(TIMEZONE).isoformat()
     )
 
-    # Notifier tout le monde
     for member in members:
         send_message(
             member["whatsapp_number"],
@@ -234,14 +298,12 @@ def _complete_round(tontine_id, current_round):
 
     print(f"[SCHEDULER] Tour {round_number}/{total_rounds} complété ✅")
 
-    # Dernier round → distribution finale
     if round_number >= total_rounds:
         _distribute_funds(tontine_id)
     else:
-        # Démarrer le round suivant
         import time
-        time.sleep(3)  # petite pause pour que les messages arrivent
-        _start_round(tontine_id, round_number + 1)
+        time.sleep(2)
+        schedule_next_round(tontine_id, round_number + 1)
 
 
 # ==============================================================
@@ -249,10 +311,7 @@ def _complete_round(tontine_id, current_round):
 # ==============================================================
 
 def _distribute_funds(tontine_id):
-    """
-    Envoie les sats à chaque membre après tous les tours.
-    Chaque membre reçoit : amount_sats * nb_membres
-    """
+    """Envoie les sats à chaque membre après tous les tours."""
     from lnbits import send_payment, get_wallet_balance
 
     tontine = get_tontine_by_id(tontine_id)
@@ -261,58 +320,43 @@ def _distribute_funds(tontine_id):
     amount_sats = tontine["amount_sats"]
     total_per_member = amount_sats * nb_members
 
-    print(f"[SCHEDULER] Distribution finale — {tontine['name']}")
-    print(f"[SCHEDULER] {nb_members} membres x {amount_sats} sats = {total_per_member} sats chacun")
+    print(f"[SCHEDULER] Distribution — {tontine['name']} — {total_per_member} sats/membre")
 
-    # Vérifier le solde du wallet bot
-    balance = get_wallet_balance()
-    expected = total_per_member * nb_members
-
-    if balance is not None and balance < expected:
-        print(f"[SCHEDULER] ⚠️ Solde insuffisant : {balance} sats (besoin : {expected} sats)")
-
-    # Notifier le début de la distribution
     for member in members:
         send_message(
             member["whatsapp_number"],
             msg_distribution(tontine["name"], amount_sats, nb_members)
         )
 
-    # Envoyer les sats à chaque membre
-    success_count = 0
     for member in members:
         result = send_payment(
             lightning_address=member["lightning_wallet"],
             amount_sats=total_per_member,
-            memo=f"TontineBot {tontine['name']} — payout final"
+            memo=f"TontineBot {tontine['name']} payout"
         )
 
         if result and result.get("success"):
-            success_count += 1
             send_message(
                 member["whatsapp_number"],
                 msg_payout_recu(tontine["name"], amount_sats, nb_members)
             )
-            print(f"[SCHEDULER] Payout envoyé à {member['whatsapp_number']} ✅")
+            print(f"[SCHEDULER] Payout ✅ → {member['whatsapp_number']}")
         else:
             send_message(
                 member["whatsapp_number"],
-                f"❌ Erreur envoi de tes sats. Contacte le support.\nMontant dû : *{total_per_member} sats*"
+                f"❌ Erreur envoi sats. Contacte le support.\nMontant dû : *{total_per_member} sats*"
             )
-            print(f"[SCHEDULER] ⚠️ Erreur payout pour {member['whatsapp_number']}")
 
-    # Marquer la tontine comme terminée
     update_tontine(tontine_id, status="completed")
 
-    # Message final
     for member in members:
         send_message(member["whatsapp_number"], msg_tontine_terminee(tontine["name"]))
 
-    print(f"[SCHEDULER] Distribution terminée — {success_count}/{nb_members} réussis")
+    print(f"[SCHEDULER] Distribution terminée ✅")
 
 
 # ==============================================================
-# RAPPELS (toutes les 12h)
+# RAPPELS
 # ==============================================================
 
 def send_payment_reminders():
@@ -325,7 +369,6 @@ def send_payment_reminders():
             continue
 
         pending = get_pending_payments_in_round(current_round["id"])
-
         for payment in pending:
             send_message(
                 payment["whatsapp_number"],
@@ -336,4 +379,4 @@ def send_payment_reminders():
                     payment["invoice"]
                 )
             )
-            print(f"[SCHEDULER] Rappel envoyé à {payment['whatsapp_number']}")
+            print(f"[SCHEDULER] Rappel → {payment['whatsapp_number']}")

@@ -1,4 +1,3 @@
-# database.py
 import sqlite3
 from config import DATABASE_PATH
 
@@ -13,7 +12,6 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Table tontines
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tontines (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,15 +19,16 @@ def init_db():
             code TEXT UNIQUE NOT NULL,
             amount_sats INTEGER NOT NULL,
             max_members INTEGER NOT NULL,
+            frequency TEXT DEFAULT 'weekly',
+            schedule_day TEXT DEFAULT 'monday',
+            schedule_time TEXT DEFAULT '08:00',
             current_round INTEGER DEFAULT 0,
             status TEXT DEFAULT 'waiting',
             created_by TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # status : waiting (en attente membres) | active (en cours) | completed (terminée)
 
-    # Table tontine_members
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tontine_members (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +42,6 @@ def init_db():
         )
     """)
 
-    # Table tontine_rounds
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tontine_rounds (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,9 +55,7 @@ def init_db():
             FOREIGN KEY (beneficiary_member_id) REFERENCES tontine_members(id)
         )
     """)
-    # status : pending | active | completed
 
-    # Table tontine_payments
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tontine_payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,7 +70,6 @@ def init_db():
             FOREIGN KEY (member_id) REFERENCES tontine_members(id)
         )
     """)
-    # status : pending | paid | failed
 
     conn.commit()
     conn.close()
@@ -85,14 +80,16 @@ def init_db():
 # TONTINES
 # ==============================================================
 
-def create_tontine(name, code, amount_sats, max_members, created_by):
+def create_tontine(name, code, amount_sats, max_members, created_by,
+                   frequency='weekly', schedule_day='monday', schedule_time='08:00'):
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            INSERT INTO tontines (name, code, amount_sats, max_members, created_by)
-            VALUES (?, ?, ?, ?, ?)
-        """, (name, code, amount_sats, max_members, created_by))
+            INSERT INTO tontines 
+            (name, code, amount_sats, max_members, created_by, frequency, schedule_day, schedule_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, code, amount_sats, max_members, created_by, frequency, schedule_day, schedule_time))
         conn.commit()
         return cursor.lastrowid
     except sqlite3.IntegrityError:
@@ -120,7 +117,6 @@ def get_tontine_by_id(tontine_id):
 
 
 def get_tontine_by_member(whatsapp_number):
-    """Retourne la tontine active d'un membre."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -179,7 +175,6 @@ def add_member(tontine_id, whatsapp_number, lightning_wallet, turn_order):
 
 
 def get_members(tontine_id):
-    """Retourne tous les membres dans l'ordre d'inscription."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -340,7 +335,6 @@ def update_payment(payment_id, **kwargs):
 
 
 def count_paid_in_round(round_id):
-    """Compte combien de membres ont payé dans ce round."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -353,7 +347,6 @@ def count_paid_in_round(round_id):
 
 
 def get_pending_payments_in_round(round_id):
-    """Retourne les paiements encore en attente dans ce round."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""

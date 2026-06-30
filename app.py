@@ -1,6 +1,6 @@
 # app.py
 import threading
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 from config import VERIFY_TOKEN, PORT, DEBUG
 from database import init_db, get_payment_by_hash, update_payment, get_tontine_by_id
@@ -9,10 +9,24 @@ from whatsapp import parse_incoming_message, is_valid_message, mark_as_read
 from commands import handle_message
 from scheduler import start_scheduler, stop_scheduler, _confirm_payment
 from whatsapp import send_message
+from api_routes import register_api_routes
 
 app = Flask(__name__)
 
 PROCESSED_MESSAGE_IDS = set()
+
+
+# ==============================================================
+# DASHBOARD WEB
+# ==============================================================
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    return render_template("dashboard.html")
+
+
+# Enregistre toutes les routes /api/*
+register_api_routes(app)
 
 
 # ==============================================================
@@ -46,7 +60,6 @@ def webhook_receive():
     raw_text = parsed["raw_text"]
     message_id = parsed["message_id"]
 
-    # Déduplication
     if message_id in PROCESSED_MESSAGE_IDS:
         return jsonify({"status": "duplicate"}), 200
     PROCESSED_MESSAGE_IDS.add(message_id)
@@ -71,10 +84,6 @@ def webhook_receive():
 
 @app.route("/lnbits/webhook", methods=["POST"])
 def lnbits_webhook():
-    """
-    LNbits appelle cette route automatiquement quand une invoice est payée.
-    Body : { "payment_hash": "...", "amount": ..., ... }
-    """
     data = request.get_json()
     if not data:
         return jsonify({"status": "no data"}), 400
@@ -85,17 +94,14 @@ def lnbits_webhook():
 
     print(f"[LNBITS WEBHOOK] Paiement reçu — hash: {payment_hash[:16]}...")
 
-    # Trouver le paiement en DB
     payment = get_payment_by_hash(payment_hash)
     if not payment:
         print(f"[LNBITS WEBHOOK] Paiement introuvable en DB")
         return jsonify({"status": "not found"}), 200
 
     if payment["status"] == "paid":
-        print(f"[LNBITS WEBHOOK] Déjà traité")
         return jsonify({"status": "already_paid"}), 200
 
-    # Trouver le round et la tontine
     from database import get_connection
     conn = get_connection()
     cursor = conn.cursor()
@@ -108,7 +114,6 @@ def lnbits_webhook():
 
     tontine_id = current_round["tontine_id"]
 
-    # Traiter le paiement dans un thread
     threading.Thread(
         target=_confirm_payment,
         args=(tontine_id, current_round, payment),
@@ -124,20 +129,12 @@ def lnbits_webhook():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({
-        "status": "ok",
-        "service": "TontineBot",
-        "version": "1.0"
-    }), 200
+    return jsonify({"status": "ok", "service": "TontineBot", "version": "1.0"}), 200
 
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({
-        "service": "TontineBot ⚡",
-        "status": "running",
-        "version": "1.0"
-    }), 200
+    return jsonify({"service": "TontineBot ⚡", "status": "running", "dashboard": "/dashboard"}), 200
 
 
 # ==============================================================

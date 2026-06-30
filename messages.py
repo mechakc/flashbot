@@ -2,12 +2,9 @@
 
 MSG_AIDE = """⚡ *TontineBot — Commandes*
 
-- *CREER NOM MONTANT MEMBRES* — Créer une tontine
-  Ex: CREER MaFamille 5000 3
-
+- *CREER* — Créer une tontine
 - *REJOINDRE CODE* — Rejoindre une tontine
   Ex: REJOINDRE TONT-4X7K
-
 - *TONTINE* — Voir le statut de ta tontine
 - *MEMBRES* — Voir les membres et l'ordre
 - *HISTORIQUE* — Voir les tours passés
@@ -22,7 +19,7 @@ Tape *AIDE* pour voir toutes les commandes disponibles."""
 MSG_CREER_NOM = """⚡ *Création d'une tontine*
 
 Quel est le *nom* de ta tontine ?
-(Entre 2 et 30 caractères — Ex: MaFamille, TontineAmi)"""
+(Entre 2 et 30 caractères — Ex: MaFamille, TontineAmis)"""
 
 MSG_CREER_MONTANT = """✅ Nom enregistré !
 
@@ -34,14 +31,43 @@ MSG_CREER_MEMBRES = """✅ Montant enregistré !
 *Combien de membres* dans cette tontine ?
 (Entre 2 et 10 membres)"""
 
+MSG_CREER_FREQUENCE = """✅ Membres enregistrés !
 
-def msg_tontine_creee(name, code, amount_sats, max_members):
+*À quelle fréquence* se font les tours ?
+
+Réponds avec :
+- *DAILY* — Chaque jour
+- *WEEKLY* — Chaque semaine
+- *MONTHLY* — Chaque mois"""
+
+MSG_CREER_JOUR = """✅ Fréquence enregistrée !
+
+*Quel jour de la semaine ?*
+
+Réponds avec :
+LUNDI, MARDI, MERCREDI, JEUDI, VENDREDI, SAMEDI ou DIMANCHE"""
+
+MSG_CREER_HEURE = """✅ Jour enregistré !
+
+*À quelle heure* doit démarrer chaque tour ?
+(Format HH:MM — Ex: 08:00, 18:30)"""
+
+MSG_CREER_WALLET = """✅ Heure enregistrée !
+
+*Quel est ton wallet Lightning ?*
+(Ex: tonnom@cake.cash ou lnbc...)"""
+
+
+def msg_tontine_creee(name, code, amount_sats, max_members, freq_txt, jour_txt, schedule_time):
     return f"""🎉 *Tontine créée avec succès !*
 
 - 📛 Nom : *{name}*
 - 🔑 Code : *{code}*
 - ⚡ Montant : *{amount_sats} sats* par tour
 - 👥 Membres : *1/{max_members}*
+- 🔁 Fréquence : *{freq_txt}*
+- 📅 Jour : *{jour_txt}*
+- ⏰ Heure : *{schedule_time}*
 
 Partage ce code à tes membres :
 👉 *{code}*
@@ -67,15 +93,16 @@ La tontine démarre automatiquement quand tout le monde est inscrit."""
 La tontine va démarrer dans quelques secondes... ⚡"""
 
 
-def msg_tontine_lancee(name, nb_members, amount_sats, ordre_perso):
+def msg_tontine_lancee(name, nb_members, amount_sats, ordre_perso, freq_txt, jour_txt, schedule_time):
     return f"""🚀 *{name} est lancée !*
 
 👥 {nb_members} membres — {amount_sats} sats par tour
+🔁 {freq_txt} — {jour_txt} à {schedule_time}
 
 *Ordre des bénéficiaires :*
 {ordre_perso}
 
-Le premier tour commence dans quelques instants.
+Le premier tour démarre à l'heure programmée.
 Tu recevras une invoice Lightning à payer. ⚡"""
 
 
@@ -85,7 +112,7 @@ def msg_invoice_tour(name, round_number, total_rounds, amount_sats, invoice, ben
 
 💰 Envoie *{amount_sats} sats* à cette adresse Lightning :
 
-`{invoice}`
+{invoice}
 
 Scanne ou copie cette invoice depuis ton wallet.
 
@@ -116,7 +143,8 @@ def msg_rappel_paiement(name, round_number, amount_sats, invoice):
 La tontine attend ton paiement !
 
 💰 Envoie *{amount_sats} sats* :
-`{invoice}`
+
+{invoice}
 
 Sans ton paiement, personne ne peut avancer."""
 
@@ -128,7 +156,7 @@ def msg_round_complet(name, round_number, total_rounds):
 Tout le monde a payé pour *{name}*.
 
 ➡️ Prochain tour : *Tour {round_number + 1}/{total_rounds}*
-Il démarre dans quelques instants..."""
+Il démarre à l'heure programmée."""
     else:
         return f"""🎉 *Dernier tour complet !*
 
@@ -167,13 +195,16 @@ Tout le monde a été payé avec succès.
 Tape *CREER* pour démarrer une nouvelle tontine."""
 
 
-def msg_statut_waiting(name, code, current_count, max_members, amount_sats):
+def msg_statut_waiting(name, code, current_count, max_members, amount_sats, freq_txt, jour_txt, schedule_time):
     return f"""📊 *Statut — {name}*
 
 - 🔑 Code : *{code}*
 - ⚡ Montant : *{amount_sats} sats/tour*
 - 👥 Membres : *{current_count}/{max_members}*
-- 🕐 Statut : En attente de membres
+- 🔁 Fréquence : *{freq_txt}*
+- 📅 Jour : *{jour_txt}*
+- ⏰ Heure : *{schedule_time}*
+- 🕐 Statut : *En attente de membres*
 
 Partage le code *{code}* pour inviter les autres !"""
 
@@ -196,7 +227,6 @@ def msg_liste_membres(name, members, from_number):
         marker = " ⭐ (toi)" if m["whatsapp_number"] == from_number else ""
         lignes.append(f"  Tour {m['turn_order']} → ...{m['whatsapp_number'][-4:]}{marker}")
     liste = "\n".join(lignes)
-
     return f"""👥 *Membres — {name}*
 
 {liste}

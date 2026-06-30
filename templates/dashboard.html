@@ -1,0 +1,343 @@
+  <!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TontineBot</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f0;color:#1a1a18;min-height:100vh}
+nav{background:#fff;border-bottom:0.5px solid #e0e0d8;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
+.logo span{color:#1D9E75}
+.nav-tabs{display:flex;gap:0}
+.nav-tab{padding:0 1.25rem;height:56px;border:none;background:none;cursor:pointer;font-size:14px;color:#666;border-bottom:2px solid transparent;font-family:inherit;transition:all 0.15s}
+.nav-tab.active{color:#1D9E75;border-bottom-color:#1D9E75;font-weight:600}
+.page{display:none;padding:2rem;max-width:1100px;margin:0 auto}
+.page.active{display:block}
+
+.hero{text-align:center;padding:4rem 2rem 3rem;max-width:680px;margin:0 auto}
+.hero h1{font-size:36px;font-weight:600;line-height:1.2;margin-bottom:1rem}
+.hero h1 em{color:#1D9E75;font-style:normal}
+.hero p{font-size:16px;color:#666;line-height:1.7;margin-bottom:2rem}
+.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-primary{background:#1D9E75;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn-secondary{background:none;border:1px solid #ccc;padding:10px 24px;border-radius:8px;font-size:15px;cursor:pointer;color:#1a1a18;font-family:inherit}
+
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;max-width:680px;margin:0 auto 3rem}
+.stat-card{background:#f0efe8;border-radius:8px;padding:1rem;text-align:center}
+.stat-num{font-size:28px;font-weight:600;color:#1D9E75}
+.stat-label{font-size:12px;color:#666;margin-top:4px}
+
+.how-section{max-width:680px;margin:0 auto 3rem}
+.how-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.step{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
+.step-num{width:28px;height:28px;border-radius:50%;background:#E1F5EE;color:#0F6E56;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.step h3{font-size:14px;font-weight:600;margin-bottom:6px}
+.step p{font-size:13px;color:#666;line-height:1.5}
+
+.why-section{max-width:680px;margin:0 auto 3rem}
+.why-section h2{font-size:20px;font-weight:600;margin-bottom:1.5rem;text-align:center}
+.why-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.why-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
+.why-icon{font-size:22px;margin-bottom:8px}
+.why-card h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.why-card p{font-size:13px;color:#666;line-height:1.5}
+
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.dash-header h2{font-size:20px;font-weight:600}
+.search-row{display:flex;gap:8px;margin-bottom:1.5rem}
+.search-row input{flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:#1a1a18}
+.search-row button{padding:8px 16px;background:#1D9E75;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.metric{background:#f0efe8;border-radius:8px;padding:1rem}
+.metric-val{font-size:24px;font-weight:600}
+.metric-lbl{font-size:12px;color:#666;margin-top:2px}
+.metric.green .metric-val{color:#1D9E75}
+.metric.amber .metric-val{color:#BA7517}
+
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem}
+.card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem}
+.card h3{font-size:14px;font-weight:600;margin-bottom:1rem;color:#666}
+.chart-wrap{position:relative;height:180px}
+
+.tontine-detail{display:none}
+.tontine-detail.active{display:block}
+.detail-header{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1.25rem;margin-bottom:16px}
+.detail-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.detail-meta{font-size:13px;color:#666}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:8px}
+.badge.active{background:#E1F5EE;color:#0F6E56}
+.badge.waiting{background:#FAEEDA;color:#854F0B}
+.badge.completed{background:#E6F1FB;color:#185FA5}
+
+.members-list{display:flex;flex-direction:column;gap:8px}
+.member-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #e0e0d8}
+.member-row:last-child{border-bottom:none}
+.member-info{display:flex;align-items:center;gap:8px}
+.avatar{width:32px;height:32px;border-radius:50%;background:#E1F5EE;color:#0F6E56;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.member-name{font-size:14px;font-weight:600}
+.member-sub{font-size:12px;color:#666}
+.paid-badge{font-size:12px;padding:2px 8px;border-radius:20px;font-weight:600}
+.paid-badge.paid{background:#E1F5EE;color:#0F6E56}
+.paid-badge.pending{background:#FAEEDA;color:#854F0B}
+
+.round-progress{margin-top:12px}
+.progress-bar-wrap{background:#f0efe8;border-radius:20px;height:8px;overflow:hidden;margin-bottom:6px}
+.progress-bar{height:100%;background:#1D9E75;border-radius:20px;transition:width 0.3s}
+.progress-label{font-size:12px;color:#666}
+
+.back-btn{background:none;border:1px solid #ccc;padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:#1a1a18;margin-bottom:1rem}
+
+.empty{text-align:center;padding:3rem;color:#666;font-size:14px}
+
+.recent-list{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
+.recent-item{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color 0.15s}
+.recent-item:hover{border-color:#1D9E75}
+.recent-name{font-size:15px;font-weight:600}
+.recent-meta{font-size:12px;color:#666;margin-top:2px}
+.recent-right{text-align:right}
+.recent-sats{font-size:14px;font-weight:600;color:#1D9E75}
+.recent-members{font-size:12px;color:#666}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><span>⚡</span> TontineBot</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('landing')">Présentation</button>
+    <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
+  </div>
+</nav>
+
+<div class="page active" id="page-landing">
+  <div class="hero">
+    <h1>La tontine de <em>confiance</em>,<br>sans intermédiaire humain</h1>
+    <p>TontineBot automatise les tontines communautaires via WhatsApp et Lightning Network. Le bot gère l'argent personne ne peut fuir avec la caisse.</p>
+    <div class="cta-row">
+      <button class="btn-primary" onclick="showPage('dashboard')">Voir le dashboard</button>
+      <a href="https://wa.me/22943267102" target="_blank" style="text-decoration: none;" class="btn-secondary">WhatsApp ⚡TontineBot</a>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num" id="s-tontines">—</div><div class="stat-label">Tontines créées</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-active">—</div><div class="stat-label">En cours</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-members">—</div><div class="stat-label">Membres</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-sats">—</div><div class="stat-label">Sats gérés</div></div>
+  </div>
+
+  <div class="how-section">
+    <h2>Comment ça marche</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><h3>Créer</h3><p>Tape CREER sur WhatsApp, configure le montant et le nombre de membres.</p></div>
+      <div class="step"><div class="step-num">2</div><h3>Rejoindre</h3><p>Partage le code. Chaque membre tape REJOINDRE et donne son wallet Lightning.</p></div>
+      <div class="step"><div class="step-num">3</div><h3>Payer & recevoir</h3><p>Le bot envoie les invoices, collecte, et distribue automatiquement à la fin.</p></div>
+    </div>
+  </div>
+
+  <div class="why-section">
+    <h2>Pourquoi TontineBot</h2>
+    <div class="why-grid">
+      <div class="why-card"><div class="why-icon">🔒</div><h3>Zéro confiance aveugle</h3><p>Le bot est le tiers neutre. Personne ne touche l'argent des autres.</p></div>
+      <div class="why-card"><div class="why-icon">⚡</div><h3>Lightning Network</h3><p>Paiements instantanés, frais quasi nuls, pas de banque nécessaire.</p></div>
+      <div class="why-card"><div class="why-icon">📱</div><h3>WhatsApp natif</h3><p>Pas d'app à télécharger. Tout se passe dans WhatsApp que tout le monde a.</p></div>
+      <div class="why-card"><div class="why-icon">🌍</div><h3>Inclusion financière</h3><p>Conçu pour l'Afrique de l'Ouest. MoMo en perspective via Flash API.</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-dashboard">
+  <div id="dash-main">
+    <div class="dash-header"><h2>Dashboard</h2></div>
+
+    <div class="metrics-grid">
+      <div class="metric green"><div class="metric-val" id="d-active">—</div><div class="metric-lbl">Tontines actives</div></div>
+      <div class="metric"><div class="metric-val" id="d-total">—</div><div class="metric-lbl">Total créées</div></div>
+      <div class="metric amber"><div class="metric-val" id="d-sats">—</div><div class="metric-lbl">Sats gérés</div></div>
+      <div class="metric"><div class="metric-val" id="d-members">—</div><div class="metric-lbl">Membres totaux</div></div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card"><h3>Répartition des tontines</h3><div class="chart-wrap"><canvas id="chart-status"></canvas></div></div>
+      <div class="card"><h3>Activité des paiements</h3><div class="chart-wrap"><canvas id="chart-payments"></canvas></div></div>
+    </div>
+
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="Code tontine (ex: TONT-4X7K)" onkeydown="if(event.key==='Enter')searchTontine()"/>
+      <button onclick="searchTontine()">Rechercher</button>
+    </div>
+    <div id="search-error" style="color:#c0392b;font-size:13px;margin-bottom:12px;display:none"></div>
+
+    <div>
+      <p style="font-size:13px;color:#666;margin-bottom:12px">Tontines récentes</p>
+      <div class="recent-list" id="recent-list"><div class="empty">Chargement...</div></div>
+    </div>
+  </div>
+
+  <div id="dash-detail" class="tontine-detail">
+    <button class="back-btn" onclick="showMain()">← Retour</button>
+    <div class="detail-header">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        <span class="detail-title" id="det-name">—</span>
+        <span class="badge" id="det-badge">—</span>
+      </div>
+      <div class="detail-meta" id="det-meta">—</div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card"><h3>Tour en cours</h3><div id="det-round"><div class="empty">Aucun tour actif</div></div></div>
+      <div class="card"><h3>Membres</h3><div class="members-list" id="det-members"></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>Historique des tours</h3>
+      <div id="det-history"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.nav-tab')[p==='landing'?0:1].classList.add('active');
+  if(p==='dashboard') loadDashboard();
+}
+
+async function fetchStats(){ try{const r=await fetch('/api/stats');return r.ok?await r.json():null;}catch(e){return null;} }
+async function fetchRecent(){ try{const r=await fetch('/api/tontines/recent');return r.ok?await r.json():[];}catch(e){return [];} }
+async function fetchTontine(code){ try{const r=await fetch('/api/tontine/'+code);return r.ok?await r.json():null;}catch(e){return null;} }
+
+function fmtSats(n){ if(n>=1000000) return Math.round(n/1000000)+'M'; if(n>=1000) return Math.round(n/1000)+'K'; return Math.round(n)+''; }
+function statusLabel(s){ if(s==='active') return 'En cours'; if(s==='waiting') return 'En attente'; if(s==='completed') return 'Terminée'; return s; }
+
+let chartStatus=null, chartPayments=null;
+
+async function loadDashboard(){
+  const [stats, recent] = await Promise.all([fetchStats(), fetchRecent()]);
+  if(stats){
+    document.getElementById('d-active').textContent = stats.active_tontines;
+    document.getElementById('d-total').textContent = stats.total_tontines;
+    document.getElementById('d-sats').textContent = fmtSats(stats.total_sats_managed)+' sats';
+    document.getElementById('d-members').textContent = stats.total_members;
+    document.getElementById('s-tontines').textContent = stats.total_tontines;
+    document.getElementById('s-active').textContent = stats.active_tontines;
+    document.getElementById('s-members').textContent = stats.total_members;
+    document.getElementById('s-sats').textContent = fmtSats(stats.total_sats_managed)+' sats';
+    const waiting = stats.total_tontines - stats.active_tontines - stats.completed_tontines;
+    renderStatusChart(stats.active_tontines, Math.max(0,waiting), stats.completed_tontines);
+    renderPaymentsChart(stats.total_payments, stats.total_tontines);
+  }
+  renderRecent(recent);
+}
+
+function renderStatusChart(active, waiting, completed){
+  const ctx = document.getElementById('chart-status').getContext('2d');
+  if(chartStatus) chartStatus.destroy();
+  chartStatus = new Chart(ctx,{type:'doughnut',data:{labels:['En cours','En attente','Terminées'],datasets:[{data:[active,waiting,completed],backgroundColor:['#1D9E75','#EF9F27','#378ADD'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}},cutout:'65%',responsive:true,maintainAspectRatio:false}});
+}
+
+function renderPaymentsChart(payments, tontines){
+  const ctx = document.getElementById('chart-payments').getContext('2d');
+  if(chartPayments) chartPayments.destroy();
+  chartPayments = new Chart(ctx,{type:'bar',data:{labels:['Paiements reçus','Tontines actives'],datasets:[{data:[payments, tontines],backgroundColor:['#1D9E75','#378ADD'],borderRadius:6,borderWidth:0}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11}}},x:{grid:{display:false},ticks:{font:{size:11}}}},responsive:true,maintainAspectRatio:false}});
+}
+
+function renderRecent(recent){
+  const el = document.getElementById('recent-list');
+  if(!recent.length){el.innerHTML='<div class="empty">Aucune tontine pour le moment</div>';return;}
+  el.innerHTML = recent.map(t=>`
+    <div class="recent-item" onclick="loadDetail('${t.code}')">
+      <div>
+        <div class="recent-name">${t.name} <span class="badge ${t.status}">${statusLabel(t.status)}</span></div>
+        <div class="recent-meta">${t.code} · Tour ${t.current_round||0}/${t.max_members}</div>
+      </div>
+      <div class="recent-right">
+        <div class="recent-sats">${fmtSats(t.amount_sats)} sats/tour</div>
+        <div class="recent-members">${t.member_count}/${t.max_members} membres</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function searchTontine(){
+  const code = document.getElementById('search-input').value.trim().toUpperCase();
+  const errEl = document.getElementById('search-error');
+  if(!code){errEl.textContent='Entre un code de tontine.';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  await loadDetail(code);
+}
+
+async function loadDetail(code){
+  const data = await fetchTontine(code);
+  const errEl = document.getElementById('search-error');
+  if(!data){errEl.textContent='Tontine introuvable. Vérifie le code.';errEl.style.display='block';return;}
+  errEl.style.display='none';
+
+  document.getElementById('dash-main').style.display='none';
+  document.getElementById('dash-detail').classList.add('active');
+
+  document.getElementById('det-name').textContent = data.name;
+  const badge = document.getElementById('det-badge');
+  badge.textContent = statusLabel(data.status);
+  badge.className = 'badge '+data.status;
+
+  const freq = {daily:'chaque jour',weekly:'chaque semaine',monthly:'chaque mois'};
+  document.getElementById('det-meta').textContent = `Code: ${data.code} · ${data.amount_sats} sats/tour · ${freq[data.frequency]||data.frequency} · ${data.members.length}/${data.max_members} membres`;
+
+  const roundEl = document.getElementById('det-round');
+  if(data.current_round_data && data.status==='active'){
+    const r = data.current_round_data;
+    const pct = Math.round(r.paid_count/r.total_members*100);
+    roundEl.innerHTML = `
+      <p style="font-size:14px;margin-bottom:12px">Tour <strong>${r.round_number}/${data.max_members}</strong></p>
+      <div class="round-progress">
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+        <div class="progress-label">${r.paid_count}/${r.total_members} membres ont payé</div>
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+        ${r.payments.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span>${p.display}</span><span class="paid-badge ${p.status}">${p.status==='paid'?'Payé':'En attente'}</span></div>`).join('')}
+      </div>
+    `;
+  } else {
+    roundEl.innerHTML = '<div class="empty" style="padding:1rem">'+(data.status==='waiting'?'En attente des membres':data.status==='completed'?'Tontine terminée':'Aucun tour actif')+'</div>';
+  }
+
+  const membersEl = document.getElementById('det-members');
+  membersEl.innerHTML = data.members.map(m=>`
+    <div class="member-row">
+      <div class="member-info">
+        <div class="avatar">T${m.turn_order}</div>
+        <div><div class="member-name">${m.display}</div><div class="member-sub">Tour ${m.turn_order}</div></div>
+      </div>
+    </div>
+  `).join('');
+
+  const histEl = document.getElementById('det-history');
+  if(!data.rounds_history.length){
+    histEl.innerHTML='<div class="empty" style="padding:1rem">Aucun tour encore</div>';
+  } else {
+    histEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">${data.rounds_history.map(r=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #e0e0d8">
+        <div><span style="font-size:14px;font-weight:600">Tour ${r.round_number}</span><span style="font-size:12px;color:#666;margin-left:8px">${(r.started_at||'').slice(0,10)}</span></div>
+        <span class="paid-badge ${r.status==='completed'?'paid':'pending'}">${statusLabel(r.status)}</span>
+      </div>
+    `).join('')}</div>`;
+  }
+}
+
+function showMain(){
+  document.getElementById('dash-main').style.display='block';
+  document.getElementById('dash-detail').classList.remove('active');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
