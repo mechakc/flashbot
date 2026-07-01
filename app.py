@@ -1,8 +1,11 @@
 # app.py
+import hashlib
+import hmac
 import threading
+from collections import OrderedDict
 from flask import Flask, request, jsonify, render_template
 
-from config import VERIFY_TOKEN, PORT, DEBUG
+from config import VERIFY_TOKEN, PORT, DEBUG, SECRET_KEY, WHATSAPP_APP_SECRET
 from database import init_db, get_payment_by_hash, update_payment, get_tontine_by_id
 from database import get_current_round, count_paid_in_round, get_members
 from whatsapp import parse_incoming_message, is_valid_message, mark_as_read
@@ -12,8 +15,22 @@ from whatsapp import send_message
 from api_routes import register_api_routes
 
 app = Flask(__name__)
+app.secret_key = SECRET_KEY
 
-PROCESSED_MESSAGE_IDS = set()
+_MAX_DEDUP_IDS = 2000
+PROCESSED_MESSAGE_IDS = OrderedDict()
+
+
+def _verify_webhook_signature(payload_body, signature_header):
+    """Verify Meta webhook signature (X-Hub-Signature-256)."""
+    if not WHATSAPP_APP_SECRET:
+        return True
+    if not signature_header:
+        return False
+    expected = "sha256=" + hmac.new(
+        WHATSAPP_APP_SECRET.encode(), payload_body, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
 
 
 # ==============================================================
@@ -47,6 +64,10 @@ def webhook_verify():
 
 @app.route("/webhook", methods=["POST"])
 def webhook_receive():
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    if not _verify_webhook_signature(request.get_data(), signature):
+        return jsonify({"status": "invalid signature"}), 403
+
     data = request.get_json()
     if not data:
         return jsonify({"status": "no data"}), 400
@@ -62,9 +83,9 @@ def webhook_receive():
 
     if message_id in PROCESSED_MESSAGE_IDS:
         return jsonify({"status": "duplicate"}), 200
-    PROCESSED_MESSAGE_IDS.add(message_id)
-    if len(PROCESSED_MESSAGE_IDS) > 1000:
-        PROCESSED_MESSAGE_IDS.clear()
+    PROCESSED_MESSAGE_IDS[message_id] = True
+    while len(PROCESSED_MESSAGE_IDS) > _MAX_DEDUP_IDS:
+        PROCESSED_MESSAGE_IDS.popitem(last=False)
 
     mark_as_read(message_id)
     print(f"[WEBHOOK] Message de {from_number} : '{text}'")

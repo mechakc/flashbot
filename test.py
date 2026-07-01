@@ -43,7 +43,7 @@ def test_config_import():
         FLASH_API_KEY, FLASH_API_URL,
         PORT, DEBUG, DATABASE_PATH
     )
-    assert VERIFY_TOKEN == "flashbot_verify_2026", "VERIFY_TOKEN incorrect"
+    assert VERIFY_TOKEN, "VERIFY_TOKEN must be set"
     assert PORT == 5000, "PORT incorrect"
     assert MOMO_ENVIRONMENT == "sandbox", "MOMO_ENVIRONMENT incorrect"
     return True

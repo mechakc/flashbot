@@ -1,9 +1,14 @@
 # recreate_momo_credentials.py
 # Lance ce script sur TON terminal local : python3 recreate_momo_credentials.py
+import os
+import sys
 import requests
 import uuid
 
-SUBSCRIPTION_KEY = "1172ca5aa3cb43afb41aae5fec134f16"
+SUBSCRIPTION_KEY = os.getenv("MOMO_SUBSCRIPTION_KEY", "")
+if not SUBSCRIPTION_KEY:
+    print("Set MOMO_SUBSCRIPTION_KEY env var before running this script.")
+    sys.exit(1)
 BASE_URL = "https://sandbox.momodeveloper.mtn.com"
 
 print("🔄 Création de nouveaux credentials MoMo sandbox...\n")
