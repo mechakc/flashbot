@@ -163,9 +163,18 @@ def get_all_tontines_by_member(whatsapp_number):
     return tontines
 
 
+_TONTINE_COLUMNS = {
+    "name", "code", "amount_sats", "max_members", "frequency",
+    "schedule_day", "schedule_time", "current_round", "status",
+}
+
+
 def update_tontine(tontine_id, **kwargs):
     if not kwargs:
         return
+    for key in kwargs:
+        if key not in _TONTINE_COLUMNS:
+            raise ValueError(f"Invalid column: {key}")
     conn = get_connection()
     cursor = conn.cursor()
     fields = ", ".join(f"{k} = ?" for k in kwargs)
@@ -296,9 +305,15 @@ def get_all_rounds(tontine_id):
     return rounds
 
 
+_ROUND_COLUMNS = {"status", "completed_at"}
+
+
 def update_round(round_id, **kwargs):
     if not kwargs:
         return
+    for key in kwargs:
+        if key not in _ROUND_COLUMNS:
+            raise ValueError(f"Invalid column: {key}")
     conn = get_connection()
     cursor = conn.cursor()
     fields = ", ".join(f"{k} = ?" for k in kwargs)
@@ -353,9 +368,15 @@ def get_payments_for_round(round_id):
     return payments
 
 
+_PAYMENT_COLUMNS = {"status", "paid_at", "invoice", "payment_hash"}
+
+
 def update_payment(payment_id, **kwargs):
     if not kwargs:
         return
+    for key in kwargs:
+        if key not in _PAYMENT_COLUMNS:
+            raise ValueError(f"Invalid column: {key}")
     conn = get_connection()
     cursor = conn.cursor()
     fields = ", ".join(f"{k} = ?" for k in kwargs)

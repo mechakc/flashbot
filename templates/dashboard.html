@@ -704,6 +704,7 @@ function showPage(p){
 
 async function fetchJSON(url){ try{const r=await fetch(url);return r.ok?await r.json():null;}catch(e){return null;} }
 
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 function fmtSats(n){ if(n==null) return '—'; if(n>=1000000) return Math.round(n/1000000)+'M'; if(n>=1000) return Math.round(n/1000)+'K'; return Math.round(n)+''; }
 function statusLabel(s){ if(s==='active') return 'En cours'; if(s==='waiting') return 'En attente'; if(s==='completed') return 'Terminée'; return s; }
 function timeAgo(ts){
@@ -764,7 +765,7 @@ function renderActivity(activity){
   el.innerHTML = activity.map(a=>`
     <div class="activity-item">
       <div class="activity-dot"></div>
-      <div class="activity-text"><strong>${a.display}</strong> a payé <span class="activity-amount">${a.amount_sats.toLocaleString('fr-FR')} sats</span> — ${a.tontine_name}</div>
+      <div class="activity-text"><strong>${esc(a.display)}</strong> a payé <span class="activity-amount">${a.amount_sats.toLocaleString('fr-FR')} sats</span> — ${esc(a.tontine_name)}</div>
       <div class="activity-time">${timeAgo(a.paid_at)}</div>
     </div>
   `).join('');
@@ -784,10 +785,10 @@ function renderRecent(recent){
     return;
   }
   el.innerHTML = recent.map(t=>`
-    <button class="recent-item" onclick="loadDetail('${t.code}')">
+    <button class="recent-item" onclick="loadDetail('${esc(t.code)}')">
       <div>
-        <div class="recent-name-row"><span class="recent-name">${t.name}</span><span class="badge ${t.status}">${statusLabel(t.status)}</span></div>
-        <div class="recent-meta">${t.code} · Tour ${t.current_round||0}/${t.max_members}</div>
+        <div class="recent-name-row"><span class="recent-name">${esc(t.name)}</span><span class="badge ${esc(t.status)}">${statusLabel(t.status)}</span></div>
+        <div class="recent-meta">${esc(t.code)} · Tour ${t.current_round||0}/${t.max_members}</div>
       </div>
       <div class="recent-right">
         <div class="recent-sats">${fmtSats(t.amount_sats)} sats/tour</div>
@@ -815,7 +816,7 @@ async function loadDetail(code, silent){
   document.getElementById('dash-main').style.display='none';
   document.getElementById('dash-detail').classList.add('active');
 
-  document.getElementById('det-name').textContent = data.name;
+  document.getElementById('det-name').textContent = esc(data.name);
   const badge = document.getElementById('det-badge');
   badge.textContent = statusLabel(data.status);
   badge.className = 'badge '+data.status;
@@ -846,7 +847,7 @@ async function loadDetail(code, silent){
     <div class="member-row">
       <div class="member-info">
         <div class="avatar">T${m.turn_order}</div>
-        <div><div class="member-name">${m.display}</div><div class="member-sub">Tour ${m.turn_order}</div></div>
+        <div><div class="member-name">${esc(m.display)}</div><div class="member-sub">Tour ${m.turn_order}</div></div>
       </div>
     </div>
   `).join('');

@@ -1,12 +1,30 @@
 # api_routes.py
+import functools
 import time
 import requests
-from flask import jsonify
+from flask import jsonify, request
+from config import DASHBOARD_API_KEY
 from database import (
     get_connection, get_members,
     get_current_round, get_all_rounds, get_payments_for_round,
     count_paid_in_round, get_tontine_by_code
 )
+
+
+def _require_api_key(f):
+    """Require DASHBOARD_API_KEY when it is configured."""
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        if not DASHBOARD_API_KEY:
+            return f(*args, **kwargs)
+        provided = (
+            request.headers.get("X-API-Key", "")
+            or request.args.get("api_key", "")
+        )
+        if provided != DASHBOARD_API_KEY:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 # Cache simple en mémoire pour éviter de spammer CoinGecko à chaque refresh
 _btc_rate_cache = {"data": None, "fetched_at": 0}
@@ -73,6 +91,7 @@ def register_api_routes(app):
         return jsonify(rate)
 
     @app.route("/api/stats", methods=["GET"])
+    @_require_api_key
     def api_stats():
         conn = get_connection()
         cursor = conn.cursor()
@@ -126,6 +145,7 @@ def register_api_routes(app):
 
 
     @app.route("/api/tontine/<code>", methods=["GET"])
+    @_require_api_key
     def api_tontine(code):
         tontine = get_tontine_by_code(code.upper())
         if not tontine:
@@ -224,6 +244,7 @@ def register_api_routes(app):
 
 
     @app.route("/api/tontines/recent", methods=["GET"])
+    @_require_api_key
     def api_recent_tontines():
         conn = get_connection()
         cursor = conn.cursor()
@@ -254,6 +275,7 @@ def register_api_routes(app):
 
 
     @app.route("/api/activity", methods=["GET"])
+    @_require_api_key
     def api_activity():
         """Flux d'activité récente toutes tontines confondues — pour le live feed."""
         conn = get_connection()
