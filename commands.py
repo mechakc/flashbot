@@ -33,31 +33,35 @@ FREQ_FR = {
 
 
 def handle_message(from_number, text, raw_text):
-    if from_number in PENDING_CREATES:
-        return handle_create_step(from_number, text, raw_text)
+    try:
+        if from_number in PENDING_CREATES:
+            return handle_create_step(from_number, text, raw_text)
 
-    if from_number in PENDING_JOINS:
-        return handle_join_step(from_number, text, raw_text)
+        if from_number in PENDING_JOINS:
+            return handle_join_step(from_number, text, raw_text)
 
-    if text == "AIDE":
-        return send_message(from_number, MSG_AIDE)
+        if text == "AIDE":
+            return send_message(from_number, MSG_AIDE)
 
-    if text.startswith("CREER"):
-        return handle_creer(from_number, text, raw_text)
+        if text.startswith("CREER"):
+            return handle_creer(from_number, text, raw_text)
 
-    if text.startswith("REJOINDRE"):
-        return handle_rejoindre(from_number, text, raw_text)
+        if text.startswith("REJOINDRE"):
+            return handle_rejoindre(from_number, text, raw_text)
 
-    if text.startswith("TONTINE"):
-        return handle_tontine(from_number, text, raw_text)
+        if text.startswith("TONTINE"):
+            return handle_tontine(from_number, text, raw_text)
 
-    if text.startswith("MEMBRES"):
-        return handle_membres(from_number, text, raw_text)
+        if text.startswith("MEMBRES"):
+            return handle_membres(from_number, text, raw_text)
 
-    if text.startswith("HISTORIQUE"):
-        return handle_historique(from_number, text, raw_text)
+        if text.startswith("HISTORIQUE"):
+            return handle_historique(from_number, text, raw_text)
 
-    return send_message(from_number, MSG_COMMANDE_INCONNUE)
+        return send_message(from_number, MSG_COMMANDE_INCONNUE)
+    except Exception as e:
+        print(f"[CMD] Erreur non gérée pour {from_number} (cmd='{text}') : {e}")
+        send_message(from_number, "⚠️ Une erreur est survenue. Réessaie dans quelques instants.")
 
 
 # ==============================================================
@@ -169,12 +173,17 @@ def _do_create_tontine(from_number, name, amount_sats, max_members,
         return
 
     turn_order = 1
-    add_member(
+    member_id = add_member(
         tontine_id=tontine_id,
         whatsapp_number=from_number,
         lightning_wallet=wallet,
         turn_order=turn_order
     )
+
+    if not member_id:
+        print(f"[CMD] Erreur ajout créateur comme membre (tontine={tontine_id}, num={from_number})")
+        send_message(from_number, "❌ Tontine créée mais erreur lors de l'inscription. Contacte le support.")
+        return
 
     tontine = get_tontine_by_id(tontine_id)
     freq_txt = FREQ_FR.get(frequency, frequency)

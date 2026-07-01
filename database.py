@@ -92,7 +92,8 @@ def create_tontine(name, code, amount_sats, max_members, created_by,
         """, (name, code, amount_sats, max_members, created_by, frequency, schedule_day, schedule_time))
         conn.commit()
         return cursor.lastrowid
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as e:
+        print(f"[DB] IntegrityError création tontine (code={code}) : {e}")
         return None
     finally:
         conn.close()
@@ -167,12 +168,17 @@ def update_tontine(tontine_id, **kwargs):
     if not kwargs:
         return
     conn = get_connection()
-    cursor = conn.cursor()
-    fields = ", ".join(f"{k} = ?" for k in kwargs)
-    values = list(kwargs.values()) + [tontine_id]
-    cursor.execute(f"UPDATE tontines SET {fields} WHERE id = ?", values)
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        fields = ", ".join(f"{k} = ?" for k in kwargs)
+        values = list(kwargs.values()) + [tontine_id]
+        cursor.execute(f"UPDATE tontines SET {fields} WHERE id = ?", values)
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"[DB] Erreur update_tontine(id={tontine_id}, {kwargs}) : {e}")
+        raise
+    finally:
+        conn.close()
 
 
 def get_all_active_tontines():
@@ -199,7 +205,8 @@ def add_member(tontine_id, whatsapp_number, lightning_wallet, turn_order):
         """, (tontine_id, whatsapp_number, lightning_wallet, turn_order))
         conn.commit()
         return cursor.lastrowid
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as e:
+        print(f"[DB] IntegrityError ajout membre (tontine={tontine_id}, num={whatsapp_number}) : {e}")
         return None
     finally:
         conn.close()
@@ -300,12 +307,17 @@ def update_round(round_id, **kwargs):
     if not kwargs:
         return
     conn = get_connection()
-    cursor = conn.cursor()
-    fields = ", ".join(f"{k} = ?" for k in kwargs)
-    values = list(kwargs.values()) + [round_id]
-    cursor.execute(f"UPDATE tontine_rounds SET {fields} WHERE id = ?", values)
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        fields = ", ".join(f"{k} = ?" for k in kwargs)
+        values = list(kwargs.values()) + [round_id]
+        cursor.execute(f"UPDATE tontine_rounds SET {fields} WHERE id = ?", values)
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"[DB] Erreur update_round(id={round_id}, {kwargs}) : {e}")
+        raise
+    finally:
+        conn.close()
 
 
 # ==============================================================
@@ -357,12 +369,17 @@ def update_payment(payment_id, **kwargs):
     if not kwargs:
         return
     conn = get_connection()
-    cursor = conn.cursor()
-    fields = ", ".join(f"{k} = ?" for k in kwargs)
-    values = list(kwargs.values()) + [payment_id]
-    cursor.execute(f"UPDATE tontine_payments SET {fields} WHERE id = ?", values)
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        fields = ", ".join(f"{k} = ?" for k in kwargs)
+        values = list(kwargs.values()) + [payment_id]
+        cursor.execute(f"UPDATE tontine_payments SET {fields} WHERE id = ?", values)
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"[DB] Erreur update_payment(id={payment_id}, {kwargs}) : {e}")
+        raise
+    finally:
+        conn.close()
 
 
 def count_paid_in_round(round_id):

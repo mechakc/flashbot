@@ -107,8 +107,8 @@ def register_api_routes(app):
         try:
             from lnbits import get_wallet_balance
             wallet_balance = get_wallet_balance()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[API] Erreur récupération solde wallet : {e}")
 
         conn.close()
 

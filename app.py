@@ -94,7 +94,12 @@ def lnbits_webhook():
 
     print(f"[LNBITS WEBHOOK] Paiement reçu — hash: {payment_hash[:16]}...")
 
-    payment = get_payment_by_hash(payment_hash)
+    try:
+        payment = get_payment_by_hash(payment_hash)
+    except Exception as e:
+        print(f"[LNBITS WEBHOOK] Erreur DB recherche paiement : {e}")
+        return jsonify({"status": "error", "detail": "database error"}), 500
+
     if not payment:
         print(f"[LNBITS WEBHOOK] Paiement introuvable en DB")
         return jsonify({"status": "not found"}), 200
@@ -102,12 +107,16 @@ def lnbits_webhook():
     if payment["status"] == "paid":
         return jsonify({"status": "already_paid"}), 200
 
-    from database import get_connection
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tontine_rounds WHERE id = ?", (payment["round_id"],))
-    current_round = cursor.fetchone()
-    conn.close()
+    try:
+        from database import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tontine_rounds WHERE id = ?", (payment["round_id"],))
+        current_round = cursor.fetchone()
+        conn.close()
+    except Exception as e:
+        print(f"[LNBITS WEBHOOK] Erreur DB recherche round : {e}")
+        return jsonify({"status": "error", "detail": "database error"}), 500
 
     if not current_round:
         return jsonify({"status": "round not found"}), 200

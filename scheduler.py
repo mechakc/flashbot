@@ -181,6 +181,7 @@ def _start_round(tontine_id, round_number):
     print(f"[SCHEDULER] Démarrage Tour {round_number}/{total_rounds} — {tontine['name']}")
 
     # Générer une invoice pour chaque membre
+    failed_members = []
     for member in members:
         memo = f"TontineBot {tontine['name']} Tour {round_number}"
 
@@ -192,6 +193,12 @@ def _start_round(tontine_id, round_number):
 
         if not invoice_data:
             print(f"[SCHEDULER] Erreur invoice pour {member['whatsapp_number']}")
+            failed_members.append(member["whatsapp_number"])
+            send_message(
+                member["whatsapp_number"],
+                f"⚠️ *{tontine['name']}* — impossible de générer ton invoice pour le Tour {round_number}. "
+                f"Une nouvelle tentative sera faite automatiquement."
+            )
             continue
 
         create_payment(
@@ -217,6 +224,9 @@ def _start_round(tontine_id, round_number):
         )
         print(f"[SCHEDULER] Invoice envoyée à {member['whatsapp_number']} ✅")
 
+    if failed_members:
+        print(f"[SCHEDULER] ⚠️ {len(failed_members)} invoice(s) en échec pour le Tour {round_number} de {tontine['name']}")
+
 
 # ==============================================================
 # VÉRIFICATION PAIEMENTS (toutes les 30 secondes)
@@ -226,30 +236,37 @@ def check_pending_payments():
     """Vérifie si des invoices en attente ont été payées."""
     from lnbits import check_invoice
 
-    tontines = get_all_active_tontines()
+    try:
+        tontines = get_all_active_tontines()
+    except Exception as e:
+        print(f"[SCHEDULER] Erreur récupération tontines actives : {e}")
+        return
 
     for tontine in tontines:
-        current_round = get_current_round(tontine["id"])
-        if not current_round:
-            continue
+        try:
+            current_round = get_current_round(tontine["id"])
+            if not current_round:
+                continue
 
-        pending = get_pending_payments_in_round(current_round["id"])
+            pending = get_pending_payments_in_round(current_round["id"])
 
-        for payment in pending:
-            result = check_invoice(payment["payment_hash"])
+            for payment in pending:
+                try:
+                    result = check_invoice(payment["payment_hash"])
 
-            if result is True:
-                print(f"[SCHEDULER] Paiement confirmé ✅ — {payment['whatsapp_number']}")
-                _confirm_payment(tontine["id"], current_round, payment)
+                    if result is True:
+                        print(f"[SCHEDULER] Paiement confirmé ✅ — {payment['whatsapp_number']}")
+                        _confirm_payment(tontine["id"], current_round, payment)
 
-            elif result is None:
-                # Invoice introuvable côté LNbits (404) : orpheline, elle ne se
-                # débloquera jamais. On en régénère une nouvelle pour ne pas
-                # bloquer la tontine indéfiniment.
-                _regenerate_orphaned_invoice(tontine, current_round, payment)
+                    elif result is None:
+                        _regenerate_orphaned_invoice(tontine, current_round, payment)
 
-            # result is False → toujours en attente ou erreur réseau transitoire,
-            # on réessaiera au prochain passage.
+                    # result is False → toujours en attente ou erreur réseau transitoire,
+                    # on réessaiera au prochain passage.
+                except Exception as e:
+                    print(f"[SCHEDULER] Erreur traitement paiement {payment.get('id', '?')} : {e}")
+        except Exception as e:
+            print(f"[SCHEDULER] Erreur vérification tontine {tontine.get('id', '?')} : {e}")
 
 
 def _regenerate_orphaned_invoice(tontine, current_round, payment):
@@ -294,35 +311,45 @@ def _confirm_payment(tontine_id, current_round, payment):
     """Confirme un paiement et notifie tous les membres."""
     from database import update_payment
 
-    update_payment(
-        payment["id"],
-        status="paid",
-        paid_at=datetime.now(TIMEZONE).isoformat()
-    )
+    try:
+        update_payment(
+            payment["id"],
+            status="paid",
+            paid_at=datetime.now(TIMEZONE).isoformat()
+        )
+    except Exception as e:
+        print(f"[SCHEDULER] Erreur critique update_payment({payment['id']}) : {e}")
+        return
 
-    tontine = get_tontine_by_id(tontine_id)
-    members = get_members(tontine_id)
-    paid_count = count_paid_in_round(current_round["id"])
-    total = len(members)
-    round_number = current_round["round_number"]
+    try:
+        tontine = get_tontine_by_id(tontine_id)
+        members = get_members(tontine_id)
+        paid_count = count_paid_in_round(current_round["id"])
+        total = len(members)
+        round_number = current_round["round_number"]
 
-    for member in members:
-        if member["whatsapp_number"] == payment["whatsapp_number"]:
-            send_message(
-                member["whatsapp_number"],
-                msg_paiement_recu_perso(tontine["name"], round_number, paid_count, total)
-            )
-        else:
-            send_message(
-                member["whatsapp_number"],
-                msg_paiement_recu_autres(
-                    tontine["name"], round_number, paid_count, total,
-                    payment["whatsapp_number"]
-                )
-            )
+        for member in members:
+            try:
+                if member["whatsapp_number"] == payment["whatsapp_number"]:
+                    send_message(
+                        member["whatsapp_number"],
+                        msg_paiement_recu_perso(tontine["name"], round_number, paid_count, total)
+                    )
+                else:
+                    send_message(
+                        member["whatsapp_number"],
+                        msg_paiement_recu_autres(
+                            tontine["name"], round_number, paid_count, total,
+                            payment["whatsapp_number"]
+                        )
+                    )
+            except Exception as e:
+                print(f"[SCHEDULER] Erreur notification membre {member.get('whatsapp_number', '?')} : {e}")
 
-    if paid_count >= total:
-        _complete_round(tontine_id, current_round)
+        if paid_count >= total:
+            _complete_round(tontine_id, current_round)
+    except Exception as e:
+        print(f"[SCHEDULER] Erreur confirmation paiement (tontine={tontine_id}) : {e}")
 
 
 def _complete_round(tontine_id, current_round):
@@ -370,30 +397,49 @@ def _distribute_funds(tontine_id):
 
     print(f"[SCHEDULER] Distribution — {tontine['name']} — {total_per_member} sats/membre")
 
+    # Vérifier le solde avant distribution
+    balance = get_wallet_balance()
+    if balance is not None and balance < total_per_member * nb_members:
+        print(f"[SCHEDULER] ⚠️ Solde insuffisant ({balance} sats) pour distribuer {total_per_member * nb_members} sats")
+
     for member in members:
         send_message(
             member["whatsapp_number"],
             msg_distribution(tontine["name"], amount_sats, nb_members)
         )
 
+    failed_payouts = []
     for member in members:
-        result = send_payment(
-            lightning_address=member["lightning_wallet"],
-            amount_sats=total_per_member,
-            memo=f"TontineBot {tontine['name']} payout"
-        )
-
-        if result and result.get("success"):
-            send_message(
-                member["whatsapp_number"],
-                msg_payout_recu(tontine["name"], amount_sats, nb_members)
+        try:
+            result = send_payment(
+                lightning_address=member["lightning_wallet"],
+                amount_sats=total_per_member,
+                memo=f"TontineBot {tontine['name']} payout"
             )
-            print(f"[SCHEDULER] Payout ✅ → {member['whatsapp_number']}")
-        else:
+
+            if result and result.get("success"):
+                send_message(
+                    member["whatsapp_number"],
+                    msg_payout_recu(tontine["name"], amount_sats, nb_members)
+                )
+                print(f"[SCHEDULER] Payout ✅ → {member['whatsapp_number']}")
+            else:
+                failed_payouts.append(member["whatsapp_number"])
+                send_message(
+                    member["whatsapp_number"],
+                    f"❌ Erreur envoi sats. Contacte le support.\nMontant dû : *{total_per_member} sats*"
+                )
+                print(f"[SCHEDULER] ❌ Payout échoué pour {member['whatsapp_number']}")
+        except Exception as e:
+            failed_payouts.append(member["whatsapp_number"])
+            print(f"[SCHEDULER] Erreur payout {member['whatsapp_number']} : {e}")
             send_message(
                 member["whatsapp_number"],
                 f"❌ Erreur envoi sats. Contacte le support.\nMontant dû : *{total_per_member} sats*"
             )
+
+    if failed_payouts:
+        print(f"[SCHEDULER] ⚠️ {len(failed_payouts)} payout(s) échoué(s) pour {tontine['name']} : {failed_payouts}")
 
     update_tontine(tontine_id, status="completed")
 
@@ -409,22 +455,32 @@ def _distribute_funds(tontine_id):
 
 def send_payment_reminders():
     """Envoie des rappels aux membres qui n'ont pas encore payé."""
-    tontines = get_all_active_tontines()
+    try:
+        tontines = get_all_active_tontines()
+    except Exception as e:
+        print(f"[SCHEDULER] Erreur récupération tontines pour rappels : {e}")
+        return
 
     for tontine in tontines:
-        current_round = get_current_round(tontine["id"])
-        if not current_round:
-            continue
+        try:
+            current_round = get_current_round(tontine["id"])
+            if not current_round:
+                continue
 
-        pending = get_pending_payments_in_round(current_round["id"])
-        for payment in pending:
-            send_message(
-                payment["whatsapp_number"],
-                msg_rappel_paiement(
-                    tontine["name"],
-                    current_round["round_number"],
-                    tontine["amount_sats"],
-                    payment["invoice"]
-                )
-            )
-            print(f"[SCHEDULER] Rappel → {payment['whatsapp_number']}")
+            pending = get_pending_payments_in_round(current_round["id"])
+            for payment in pending:
+                try:
+                    send_message(
+                        payment["whatsapp_number"],
+                        msg_rappel_paiement(
+                            tontine["name"],
+                            current_round["round_number"],
+                            tontine["amount_sats"],
+                            payment["invoice"]
+                        )
+                    )
+                    print(f"[SCHEDULER] Rappel → {payment['whatsapp_number']}")
+                except Exception as e:
+                    print(f"[SCHEDULER] Erreur rappel {payment.get('whatsapp_number', '?')} : {e}")
+        except Exception as e:
+            print(f"[SCHEDULER] Erreur rappels tontine {tontine.get('id', '?')} : {e}")
