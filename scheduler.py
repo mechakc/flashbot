@@ -236,10 +236,58 @@ def check_pending_payments():
         pending = get_pending_payments_in_round(current_round["id"])
 
         for payment in pending:
-            paid = check_invoice(payment["payment_hash"])
-            if paid:
+            result = check_invoice(payment["payment_hash"])
+
+            if result is True:
                 print(f"[SCHEDULER] Paiement confirmé ✅ — {payment['whatsapp_number']}")
                 _confirm_payment(tontine["id"], current_round, payment)
+
+            elif result is None:
+                # Invoice introuvable côté LNbits (404) : orpheline, elle ne se
+                # débloquera jamais. On en régénère une nouvelle pour ne pas
+                # bloquer la tontine indéfiniment.
+                _regenerate_orphaned_invoice(tontine, current_round, payment)
+
+            # result is False → toujours en attente ou erreur réseau transitoire,
+            # on réessaiera au prochain passage.
+
+
+def _regenerate_orphaned_invoice(tontine, current_round, payment):
+    """
+    Régénère une invoice fraîche pour un paiement dont l'ancienne invoice
+    n'existe plus côté LNbits (clé API/wallet changée, instance réinitialisée, etc.).
+    """
+    import os
+    from lnbits import create_invoice
+    from database import update_payment
+
+    base_url = os.getenv("BASE_URL", "http://localhost:5000")
+    webhook_url = f"{base_url}/lnbits/webhook"
+    memo = f"TontineBot {tontine['name']} Tour {current_round['round_number']} (renouvelée)"
+
+    invoice_data = create_invoice(
+        amount_sats=payment["amount_sats"],
+        memo=memo,
+        webhook_url=webhook_url
+    )
+
+    if not invoice_data:
+        print(f"[SCHEDULER] Impossible de régénérer une invoice pour {payment['whatsapp_number']}")
+        return
+
+    update_payment(
+        payment["id"],
+        invoice=invoice_data["payment_request"],
+        payment_hash=invoice_data["payment_hash"]
+    )
+
+    send_message(
+        payment["whatsapp_number"],
+        f"⚠️ *{tontine['name']}* — ton ancienne invoice n'était plus valide.\n\n"
+        f"Voici une nouvelle invoice à payer :\n\n💰 *{payment['amount_sats']} sats*\n\n"
+        f"{invoice_data['payment_request']}"
+    )
+    print(f"[SCHEDULER] Invoice régénérée ✅ — {payment['whatsapp_number']}")
 
 
 def _confirm_payment(tontine_id, current_round, payment):

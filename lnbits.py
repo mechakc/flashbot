@@ -28,7 +28,8 @@ def create_invoice(amount_sats, memo, webhook_url=None):
         response = requests.post(
             f"{LNBITS_URL}/api/v1/payments",
             headers=HEADERS,
-            json=payload
+            json=payload,
+            timeout=15
         )
         response.raise_for_status()
         data = response.json()
@@ -49,13 +50,23 @@ def create_invoice(amount_sats, memo, webhook_url=None):
 def check_invoice(payment_hash):
     """
     Vérifie si une invoice a été payée.
-    Retourne True si payée, False sinon.
+    Retourne :
+      - True  → payée
+      - False → en attente (ou erreur réseau transitoire, on réessaiera)
+      - None  → invoice introuvable côté LNbits (404, probablement orpheline :
+                clé API/wallet changée ou instance réinitialisée)
     """
     try:
         response = requests.get(
             f"{LNBITS_URL}/api/v1/payments/{payment_hash}",
-            headers=HEADERS
+            headers=HEADERS,
+            timeout=10
         )
+
+        if response.status_code == 404:
+            print(f"[LNBITS] Invoice {payment_hash[:16]}... introuvable côté LNbits (404) — probablement orpheline")
+            return None
+
         response.raise_for_status()
         data = response.json()
 
@@ -97,7 +108,8 @@ def send_payment(lightning_address, amount_sats, memo="TontineBot payout"):
         response = requests.post(
             f"{LNBITS_URL}/api/v1/payments",
             headers=HEADERS,
-            json=payload
+            json=payload,
+            timeout=15
         )
         response.raise_for_status()
         data = response.json()
@@ -164,7 +176,8 @@ def get_wallet_balance():
     try:
         response = requests.get(
             f"{LNBITS_URL}/api/v1/wallet",
-            headers=HEADERS
+            headers=HEADERS,
+            timeout=10
         )
         response.raise_for_status()
         data = response.json()

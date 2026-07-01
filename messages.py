@@ -6,6 +6,7 @@ MSG_AIDE = """⚡ *TontineBot — Commandes*
 - *REJOINDRE CODE* — Rejoindre une tontine
   Ex: REJOINDRE TONT-4X7K
 - *TONTINE* — Voir le statut de ta tontine
+  (ou *TONTINE CODE* si tu es dans plusieurs tontines)
 - *MEMBRES* — Voir les membres et l'ordre
 - *HISTORIQUE* — Voir les tours passés
 - *AIDE* — Afficher ce message
@@ -70,7 +71,7 @@ def msg_tontine_creee(name, code, amount_sats, max_members, freq_txt, jour_txt, 
 - ⏰ Heure : *{schedule_time}*
 
 Partage ce code à tes membres :
-👉 *{code}*
+👉 {code}
 
 Ils tapent : *REJOINDRE {code}*
 

@@ -2,7 +2,7 @@ import random
 import string
 from database import (
     create_tontine, get_tontine_by_code, get_tontine_by_id,
-    get_tontine_by_member, update_tontine,
+    get_tontines_by_member, get_all_tontines_by_member, update_tontine,
     add_member, get_members, get_member, count_members,
     get_member_by_id, get_all_rounds, get_current_round,
     get_payments_for_round, count_paid_in_round
@@ -48,14 +48,14 @@ def handle_message(from_number, text, raw_text):
     if text.startswith("REJOINDRE"):
         return handle_rejoindre(from_number, text, raw_text)
 
-    if text == "TONTINE":
-        return handle_tontine(from_number)
+    if text.startswith("TONTINE"):
+        return handle_tontine(from_number, text, raw_text)
 
-    if text == "MEMBRES":
-        return handle_membres(from_number)
+    if text.startswith("MEMBRES"):
+        return handle_membres(from_number, text, raw_text)
 
-    if text == "HISTORIQUE":
-        return handle_historique(from_number)
+    if text.startswith("HISTORIQUE"):
+        return handle_historique(from_number, text, raw_text)
 
     return send_message(from_number, MSG_COMMANDE_INCONNUE)
 
@@ -65,11 +65,8 @@ def handle_message(from_number, text, raw_text):
 # ==============================================================
 
 def handle_creer(from_number, text, raw_text):
-    existing = get_tontine_by_member(from_number)
-    if existing:
-        send_message(from_number, f"⚠️ Tu es déjà dans une tontine active (*{existing['name']}*).\n\nTape *TONTINE* pour voir son statut.")
-        return
-
+    # Un membre déjà présent dans une tontine peut quand même en créer une nouvelle.
+    # (Seul REJOINDRE reste bloqué pour éviter la double-participation à une même tontine.)
     PENDING_CREATES[from_number] = {"step": "await_name"}
     send_message(from_number, MSG_CREER_NOM)
 
@@ -198,11 +195,8 @@ def _do_create_tontine(from_number, name, amount_sats, max_members,
 # ==============================================================
 
 def handle_rejoindre(from_number, text, raw_text):
-    existing = get_tontine_by_member(from_number)
-    if existing:
-        send_message(from_number, f"⚠️ Tu es déjà dans une tontine active (*{existing['name']}*).\n\nTape *TONTINE* pour voir son statut.")
-        return
-
+    # Un membre déjà dans une (ou plusieurs) tontine(s) peut aussi en rejoindre une nouvelle.
+    # La vérification plus bas empêche seulement de rejoindre deux fois LA MÊME tontine.
     parts = raw_text.strip().split()
     if len(parts) < 2:
         send_message(from_number, "⚠️ Indique le code de la tontine.\nEx: *REJOINDRE TONT-4X7K*")
@@ -325,10 +319,47 @@ def _launch_tontine(tontine_id):
 # TONTINE
 # ==============================================================
 
-def handle_tontine(from_number):
-    tontine = get_tontine_by_member(from_number)
+def _resolve_user_tontine(from_number, raw_text, cmd_hint="TONTINE", include_completed=False):
+    """
+    Détermine la tontine visée par une commande du type 'COMMANDE [CODE]'.
+    - Si un CODE est fourni, vérifie que l'utilisateur en est membre.
+    - Sinon, cherche parmi les tontines de l'utilisateur : s'il n'y en a qu'une,
+      elle est retournée directement ; s'il y en a plusieurs, une liste est
+      envoyée pour lui demander de préciser le code.
+    Retourne le dict tontine, ou None (un message d'erreur/liste a déjà été envoyé).
+    """
+    parts = raw_text.strip().split()
+    code = parts[1].upper() if len(parts) >= 2 else None
+
+    if code:
+        tontine = get_tontine_by_code(code)
+        if not tontine:
+            send_message(from_number, f"❌ Code *{code}* introuvable.")
+            return None
+        if not get_member(tontine["id"], from_number):
+            send_message(from_number, f"❌ Tu n'es pas membre de la tontine *{code}*.")
+            return None
+        return tontine
+
+    mine = get_all_tontines_by_member(from_number) if include_completed else get_tontines_by_member(from_number)
+    if not mine:
+        if include_completed:
+            send_message(from_number, "❌ Aucune tontine trouvée.")
+        else:
+            send_message(from_number, "❌ Tu n'es dans aucune tontine active.\n\nTape *CREER* ou *REJOINDRE CODE* pour commencer.")
+        return None
+
+    if len(mine) > 1:
+        liste = "\n".join(f"  🔹 *{t['name']}* — {t['code']}" for t in mine)
+        send_message(from_number, f"📋 Tu es dans plusieurs tontines :\n\n{liste}\n\nTape *{cmd_hint} CODE* pour préciser.\nEx: *{cmd_hint} {mine[0]['code']}*")
+        return None
+
+    return mine[0]
+
+
+def handle_tontine(from_number, text="TONTINE", raw_text="TONTINE"):
+    tontine = _resolve_user_tontine(from_number, raw_text, cmd_hint="TONTINE")
     if not tontine:
-        send_message(from_number, "❌ Tu n'es dans aucune tontine active.\n\nTape *CREER* ou *REJOINDRE CODE* pour commencer.")
         return
 
     members = get_members(tontine["id"])
@@ -381,10 +412,9 @@ def handle_tontine(from_number):
 # MEMBRES
 # ==============================================================
 
-def handle_membres(from_number):
-    tontine = get_tontine_by_member(from_number)
+def handle_membres(from_number, text="MEMBRES", raw_text="MEMBRES"):
+    tontine = _resolve_user_tontine(from_number, raw_text, cmd_hint="MEMBRES")
     if not tontine:
-        send_message(from_number, "❌ Tu n'es dans aucune tontine active.")
         return
     members = get_members(tontine["id"])
     send_message(from_number, msg_liste_membres(tontine["name"], members, from_number))
@@ -394,23 +424,9 @@ def handle_membres(from_number):
 # HISTORIQUE
 # ==============================================================
 
-def handle_historique(from_number):
-    tontine = get_tontine_by_member(from_number)
+def handle_historique(from_number, text="HISTORIQUE", raw_text="HISTORIQUE"):
+    tontine = _resolve_user_tontine(from_number, raw_text, cmd_hint="HISTORIQUE", include_completed=True)
     if not tontine:
-        from database import get_connection
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT t.* FROM tontines t
-            JOIN tontine_members m ON m.tontine_id = t.id
-            WHERE m.whatsapp_number = ?
-            ORDER BY t.created_at DESC LIMIT 1
-        """, (from_number,))
-        tontine = cursor.fetchone()
-        conn.close()
-
-    if not tontine:
-        send_message(from_number, "❌ Aucune tontine trouvée.")
         return
 
     rounds = get_all_rounds(tontine["id"])

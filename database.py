@@ -132,6 +132,37 @@ def get_tontine_by_member(whatsapp_number):
     return tontine
 
 
+def get_tontines_by_member(whatsapp_number):
+    """Retourne TOUTES les tontines actives/en attente dont l'utilisateur est membre."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT t.* FROM tontines t
+        JOIN tontine_members m ON m.tontine_id = t.id
+        WHERE m.whatsapp_number = ?
+        AND t.status IN ('waiting', 'active')
+        ORDER BY t.created_at DESC
+    """, (whatsapp_number,))
+    tontines = cursor.fetchall()
+    conn.close()
+    return tontines
+
+
+def get_all_tontines_by_member(whatsapp_number):
+    """Retourne TOUTES les tontines (peu importe le statut) dont l'utilisateur est/était membre."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT t.* FROM tontines t
+        JOIN tontine_members m ON m.tontine_id = t.id
+        WHERE m.whatsapp_number = ?
+        ORDER BY t.created_at DESC
+    """, (whatsapp_number,))
+    tontines = cursor.fetchall()
+    conn.close()
+    return tontines
+
+
 def update_tontine(tontine_id, **kwargs):
     if not kwargs:
         return
