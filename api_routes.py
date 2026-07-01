@@ -1,12 +1,12 @@
 # api_routes.py
 import time
-import requests
 from flask import jsonify
 from database import (
     get_connection, get_members,
     get_current_round, get_all_rounds, get_payments_for_round,
     count_paid_in_round, get_tontine_by_code
 )
+from utils import format_phone_display, http_get
 
 # Cache simple en mémoire pour éviter de spammer CoinGecko à chaque refresh
 _btc_rate_cache = {"data": None, "fetched_at": 0}
@@ -26,19 +26,18 @@ def _get_btc_rate():
 
     EUR_TO_XOF = 655.957
 
-    try:
-        response = requests.get(
-            "https://api.coingecko.com/api/v3/simple/price",
-            params={
-                "ids": "bitcoin",
-                "vs_currencies": "eur",
-                "include_24hr_change": "true"
-            },
-            timeout=5
-        )
-        response.raise_for_status()
-        data = response.json()
+    data = http_get(
+        "https://api.coingecko.com/api/v3/simple/price",
+        params={
+            "ids": "bitcoin",
+            "vs_currencies": "eur",
+            "include_24hr_change": "true"
+        },
+        timeout=5,
+        tag="BTC RATE"
+    )
 
+    if data:
         btc_eur = data["bitcoin"]["eur"]
         change_24h = data["bitcoin"].get("eur_24h_change", 0)
 
@@ -56,11 +55,9 @@ def _get_btc_rate():
         _btc_rate_cache["fetched_at"] = now
         return result
 
-    except Exception as e:
-        print(f"[BTC RATE] Erreur CoinGecko : {e}")
-        if _btc_rate_cache["data"]:
-            return _btc_rate_cache["data"]
-        return None
+    if _btc_rate_cache["data"]:
+        return _btc_rate_cache["data"]
+    return None
 
 
 def register_api_routes(app):
@@ -135,7 +132,7 @@ def register_api_routes(app):
         members = get_members(tontine["id"])
         members_list = [dict(m) for m in members]
         for m in members_list:
-            m["display"] = f"...{m['whatsapp_number'][-4:]}"
+            m["display"] = format_phone_display(m['whatsapp_number'])
 
         current_round = get_current_round(tontine["id"])
         rounds = get_all_rounds(tontine["id"])
@@ -152,7 +149,7 @@ def register_api_routes(app):
                 "total_members": len(members),
                 "payments": [
                     {
-                        "display": f"...{p['whatsapp_number'][-4:]}",
+                        "display": format_phone_display(p['whatsapp_number']),
                         "status": p["status"],
                         "amount_sats": p["amount_sats"],
                         "paid_at": p["paid_at"]
@@ -172,7 +169,7 @@ def register_api_routes(app):
                 "completed_at": r["completed_at"],
                 "payments": [
                     {
-                        "display": f"...{p['whatsapp_number'][-4:]}",
+                        "display": format_phone_display(p['whatsapp_number']),
                         "status": p["status"],
                         "amount_sats": p["amount_sats"],
                         "paid_at": p["paid_at"]
@@ -273,7 +270,7 @@ def register_api_routes(app):
 
         return jsonify([
             {
-                "display": f"...{row['whatsapp_number'][-4:]}",
+                "display": format_phone_display(row['whatsapp_number']),
                 "amount_sats": row["amount_sats"],
                 "paid_at": row["paid_at"],
                 "tontine_name": row["tontine_name"],

@@ -1,4 +1,6 @@
 # messages.py
+from utils import format_phone_display
+
 
 MSG_AIDE = """⚡ *TontineBot — Commandes*
 
@@ -131,7 +133,7 @@ Progression : *{paid_count}/{total}* membres ont payé
 
 
 def msg_paiement_recu_autres(name, round_number, paid_count, total, payer_num):
-    num_court = f"...{payer_num[-4:]}"
+    num_court = format_phone_display(payer_num)
     return f"""✅ *{num_court} a payé* — {name} Tour {round_number}
 
 Progression : *{paid_count}/{total}* membres ont payé
@@ -211,7 +213,7 @@ Partage le code *{code}* pour inviter les autres !"""
 
 
 def msg_statut_active(name, round_number, total_rounds, beneficiary_number, is_beneficiary, paid_count, total, my_status):
-    benef = "toi ⭐" if is_beneficiary else f"...{beneficiary_number[-4:]}"
+    benef = "toi ⭐" if is_beneficiary else format_phone_display(beneficiary_number)
     mon_statut = "✅ Payé" if my_status == "paid" else "⏳ En attente"
 
     return f"""📊 *Statut — {name}*
@@ -226,7 +228,7 @@ def msg_liste_membres(name, members, from_number):
     lignes = []
     for m in members:
         marker = " ⭐ (toi)" if m["whatsapp_number"] == from_number else ""
-        lignes.append(f"  Tour {m['turn_order']} → ...{m['whatsapp_number'][-4:]}{marker}")
+        lignes.append(f"  Tour {m['turn_order']} → {format_phone_display(m['whatsapp_number'])}{marker}")
     liste = "\n".join(lignes)
     return f"""👥 *Membres — {name}*
 

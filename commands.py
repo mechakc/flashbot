@@ -9,6 +9,7 @@ from database import (
 )
 from whatsapp import send_message
 from messages import *
+from utils import notify_members
 
 PENDING_JOINS = {}
 PENDING_CREATES = {}
@@ -465,17 +466,16 @@ def _is_valid_time(text):
 
 def _notify_all_members(tontine_id, exclude_number, message):
     members = get_members(tontine_id)
-    for member in members:
-        if member["whatsapp_number"] != exclude_number:
-            send_message(member["whatsapp_number"], message)
+    notify_members(members, message, exclude_number=exclude_number)
 
 
 def notify_all_members_payment(tontine_id, payer_number, paid_count, total):
     members = get_members(tontine_id)
     tontine = get_tontine_by_id(tontine_id)
-    for member in members:
+
+    def _msg(member):
         if member["whatsapp_number"] == payer_number:
-            send_message(payer_number, f"✅ Paiement reçu ! ({paid_count}/{total})\n\nMerci, on attend les autres membres.")
-        else:
-            send_message(member["whatsapp_number"],
-                f"✅ Paiement reçu pour *{tontine['name']}* ({paid_count}/{total})")
+            return f"✅ Paiement reçu ! ({paid_count}/{total})\n\nMerci, on attend les autres membres."
+        return f"✅ Paiement reçu pour *{tontine['name']}* ({paid_count}/{total})"
+
+    notify_members(members, _msg)

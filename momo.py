@@ -3,8 +3,11 @@ import requests
 import uuid
 import base64
 from config import MOMO_SUBSCRIPTION_KEY, MOMO_API_USER, MOMO_API_KEY, MOMO_ENVIRONMENT, MOMO_BASE_URL
+from utils import http_post, http_get
 
 COLLECTION_URL = f"{MOMO_BASE_URL}/collection/v1_0"
+TAG = "MOMO"
+
 
 def _get_auth_token():
     """Génère un token d'accès OAuth2 via les credentials MoMo."""
@@ -16,18 +19,18 @@ def _get_auth_token():
         "Ocp-Apim-Subscription-Key": MOMO_SUBSCRIPTION_KEY,
     }
 
-    try:
-        response = requests.post(
-            f"{MOMO_BASE_URL}/collection/token/",
-            headers=headers
-        )
-        response.raise_for_status()
-        token = response.json().get("access_token")
-        print(f"[MOMO] Token obtenu ✅")
-        return token
-    except requests.exceptions.RequestException as e:
-        print(f"[MOMO] Erreur obtention token : {e}")
+    data = http_post(
+        f"{MOMO_BASE_URL}/collection/token/",
+        headers=headers,
+        tag=TAG
+    )
+
+    if not data:
         return None
+
+    token = data.get("access_token")
+    print(f"[MOMO] Token obtenu ✅")
+    return token
 
 
 def request_to_pay(amount, phone_number, tx_id):
@@ -39,11 +42,9 @@ def request_to_pay(amount, phone_number, tx_id):
     if not token:
         return {"success": False, "error": "Token MoMo indisponible"}
 
-    # En sandbox, le seul numéro accepté est le numéro de test MTN
     if MOMO_ENVIRONMENT == "sandbox":
         phone_number = "46733123454"
 
-    # Référence unique pour cette transaction
     momo_ref = str(uuid.uuid4())
 
     headers = {
@@ -57,7 +58,7 @@ def request_to_pay(amount, phone_number, tx_id):
     payload = {
         "amount": str(amount),
         "currency": "EUR" if MOMO_ENVIRONMENT == "sandbox" else "XOF",
-        "externalId": str(uuid.uuid4()),  # UUID requis par MTN sandbox
+        "externalId": str(uuid.uuid4()),
         "payer": {
             "partyIdType": "MSISDN",
             "partyId": phone_number
@@ -73,13 +74,11 @@ def request_to_pay(amount, phone_number, tx_id):
             json=payload
         )
 
-        # 202 Accepted = demande envoyée, en attente de confirmation PIN
         if response.status_code == 202:
             print(f"[MOMO] Request to Pay envoyée ✅ ref={momo_ref}")
             return {"success": True, "transaction_id": momo_ref}
         else:
             print(f"[MOMO] Erreur Request to Pay : {response.status_code}")
-            print(f"[MOMO] Headers réponse : {dict(response.headers)}")
             print(f"[MOMO] Body réponse : {response.text}")
             return {"success": False, "error": response.text}
 
@@ -103,19 +102,18 @@ def check_payment_status(momo_ref):
         "Ocp-Apim-Subscription-Key": MOMO_SUBSCRIPTION_KEY,
     }
 
-    try:
-        response = requests.get(
-            f"{COLLECTION_URL}/requesttopay/{momo_ref}",
-            headers=headers
-        )
-        response.raise_for_status()
-        status = response.json().get("status", "FAILED")
-        print(f"[MOMO] Statut transaction {momo_ref} : {status}")
-        return status
+    data = http_get(
+        f"{COLLECTION_URL}/requesttopay/{momo_ref}",
+        headers=headers,
+        tag=TAG
+    )
 
-    except requests.exceptions.RequestException as e:
-        print(f"[MOMO] Erreur vérification statut : {e}")
+    if not data:
         return "FAILED"
+
+    status = data.get("status", "FAILED")
+    print(f"[MOMO] Statut transaction {momo_ref} : {status}")
+    return status
 
 
 def wait_for_payment(momo_ref, max_attempts=10, delay=5):
