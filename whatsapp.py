@@ -34,12 +34,10 @@ def send_typing(to):
         "type": "reaction",
         "reaction": {"message_id": "", "emoji": "⚡"}
     }
-    # Note : le vrai typing indicator nécessite l'API Business avancée
-    # On skip silencieusement si ça échoue
     try:
-        requests.post(BASE_URL, headers=HEADERS, json=payload)
-    except Exception:
-        pass
+        requests.post(BASE_URL, headers=HEADERS, json=payload, timeout=5)
+    except requests.exceptions.RequestException as e:
+        print(f"[WA] Erreur envoi typing à {to} : {e}")
 
 def mark_as_read(message_id):
     """Marque un message comme lu (double coche bleue)."""
@@ -49,9 +47,9 @@ def mark_as_read(message_id):
         "message_id": message_id
     }
     try:
-        requests.post(BASE_URL, headers=HEADERS, json=payload)
-    except Exception:
-        pass
+        requests.post(BASE_URL, headers=HEADERS, json=payload, timeout=5)
+    except requests.exceptions.RequestException as e:
+        print(f"[WA] Erreur mark_as_read ({message_id}) : {e}")
 
 def parse_incoming_message(data):
     """
@@ -80,7 +78,8 @@ def parse_incoming_message(data):
             "timestamp": message["timestamp"]
         }
 
-    except (KeyError, IndexError, TypeError):
+    except (KeyError, IndexError, TypeError) as e:
+        print(f"[WA] Erreur parsing message webhook : {e}")
         return None
 
 def is_valid_message(parsed):

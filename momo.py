@@ -19,7 +19,8 @@ def _get_auth_token():
     try:
         response = requests.post(
             f"{MOMO_BASE_URL}/collection/token/",
-            headers=headers
+            headers=headers,
+            timeout=10
         )
         response.raise_for_status()
         token = response.json().get("access_token")
@@ -70,7 +71,8 @@ def request_to_pay(amount, phone_number, tx_id):
         response = requests.post(
             f"{COLLECTION_URL}/requesttopay",
             headers=headers,
-            json=payload
+            json=payload,
+            timeout=15
         )
 
         # 202 Accepted = demande envoyée, en attente de confirmation PIN
@@ -106,7 +108,8 @@ def check_payment_status(momo_ref):
     try:
         response = requests.get(
             f"{COLLECTION_URL}/requesttopay/{momo_ref}",
-            headers=headers
+            headers=headers,
+            timeout=10
         )
         response.raise_for_status()
         status = response.json().get("status", "FAILED")

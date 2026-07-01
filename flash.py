@@ -56,7 +56,8 @@ def _real_api(amount_fcfa, lightning_wallet):
         response = requests.post(
             f"{FLASH_API_URL}/buy",
             headers=headers,
-            json=payload
+            json=payload,
+            timeout=15
         )
         response.raise_for_status()
         data = response.json()
@@ -96,13 +97,15 @@ def get_btc_rate():
     try:
         response = requests.get(
             f"{FLASH_API_URL}/rate",
-            headers=headers
+            headers=headers,
+            timeout=10
         )
         response.raise_for_status()
         data = response.json()
         return data.get("fcfa_per_btc", 55_000_000)
 
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as e:
+        print(f"[FLASH] Erreur récupération taux : {e}")
         return _placeholder_rate()
 
 
