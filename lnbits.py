@@ -1,21 +1,20 @@
 # lnbits.py
 import requests
 from config import LNBITS_URL, LNBITS_API_KEY, LNBITS_WALLET_ID
+from utils import http_get, http_post
 
 HEADERS = {
     "X-Api-Key": LNBITS_API_KEY,
     "Content-Type": "application/json"
 }
 
+TAG = "LNBITS"
+
 
 def create_invoice(amount_sats, memo, webhook_url=None):
     """
     Crée une invoice Lightning pour qu'un membre paie.
     Retourne { success, payment_request, payment_hash } ou None.
-    
-    amount_sats  : montant en satoshis
-    memo         : description visible par le payeur
-    webhook_url  : URL que LNbits appellera quand l'invoice est payée
     """
     payload = {
         "out": False,
@@ -24,27 +23,24 @@ def create_invoice(amount_sats, memo, webhook_url=None):
         "webhook": webhook_url
     }
 
-    try:
-        response = requests.post(
-            f"{LNBITS_URL}/api/v1/payments",
-            headers=HEADERS,
-            json=payload,
-            timeout=15
-        )
-        response.raise_for_status()
-        data = response.json()
+    data = http_post(
+        f"{LNBITS_URL}/api/v1/payments",
+        headers=HEADERS,
+        json=payload,
+        timeout=15,
+        tag=TAG
+    )
 
-        print(f"[LNBITS] Invoice créée ✅ hash={data['payment_hash'][:16]}...")
-
-        return {
-            "success": True,
-            "payment_request": data["payment_request"],  # invoice à scanner
-            "payment_hash": data["payment_hash"]          # ID pour vérifier le statut
-        }
-
-    except requests.exceptions.RequestException as e:
-        print(f"[LNBITS] Erreur création invoice : {e}")
+    if not data:
         return None
+
+    print(f"[LNBITS] Invoice créée ✅ hash={data['payment_hash'][:16]}...")
+
+    return {
+        "success": True,
+        "payment_request": data["payment_request"],
+        "payment_hash": data["payment_hash"]
+    }
 
 
 def check_invoice(payment_hash):
@@ -53,8 +49,7 @@ def check_invoice(payment_hash):
     Retourne :
       - True  → payée
       - False → en attente (ou erreur réseau transitoire, on réessaiera)
-      - None  → invoice introuvable côté LNbits (404, probablement orpheline :
-                clé API/wallet changée ou instance réinitialisée)
+      - None  → invoice introuvable côté LNbits (404, probablement orpheline)
     """
     try:
         response = requests.get(
@@ -83,36 +78,31 @@ def send_payment(lightning_address, amount_sats, memo="TontineBot payout"):
     """
     Envoie des sats à une adresse Lightning (lightning address ou invoice).
     Retourne { success, payment_hash } ou None.
-    
-    Supporte :
-    - Lightning Address : user@domain.com
-    - LNURL
-    - Invoice directe : lnbc...
     """
     try:
-        # Si c'est une Lightning Address (user@domain.com), on résout d'abord
         if "@" in lightning_address and not lightning_address.startswith("lnbc"):
             invoice = _resolve_lightning_address(lightning_address, amount_sats, memo)
             if not invoice:
                 print(f"[LNBITS] Impossible de résoudre l'adresse {lightning_address}")
                 return None
         else:
-            invoice = lightning_address  # déjà une invoice
+            invoice = lightning_address
 
-        # Payer l'invoice
         payload = {
             "out": True,
             "bolt11": invoice
         }
 
-        response = requests.post(
+        data = http_post(
             f"{LNBITS_URL}/api/v1/payments",
             headers=HEADERS,
             json=payload,
-            timeout=15
+            timeout=15,
+            tag=TAG
         )
-        response.raise_for_status()
-        data = response.json()
+
+        if not data:
+            return None
 
         print(f"[LNBITS] Paiement envoyé ✅ vers {lightning_address}")
 
@@ -121,7 +111,7 @@ def send_payment(lightning_address, amount_sats, memo="TontineBot payout"):
             "payment_hash": data.get("payment_hash", "")
         }
 
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         print(f"[LNBITS] Erreur envoi paiement : {e}")
         return None
 
@@ -133,17 +123,17 @@ def _resolve_lightning_address(lightning_address, amount_sats, memo):
     """
     try:
         user, domain = lightning_address.split("@")
-        amount_msats = amount_sats * 1000  # millisatoshis
+        amount_msats = amount_sats * 1000
 
-        # Étape 1 : récupérer le LNURL endpoint
-        lnurl_resp = requests.get(
+        lnurl_data = http_get(
             f"https://{domain}/.well-known/lnurlp/{user}",
-            timeout=10
+            timeout=10,
+            tag=TAG
         )
-        lnurl_resp.raise_for_status()
-        lnurl_data = lnurl_resp.json()
 
-        # Vérifier les limites
+        if not lnurl_data:
+            return None
+
         min_sendable = lnurl_data.get("minSendable", 0)
         max_sendable = lnurl_data.get("maxSendable", float("inf"))
 
@@ -151,17 +141,18 @@ def _resolve_lightning_address(lightning_address, amount_sats, memo):
             print(f"[LNBITS] Montant hors limites : {amount_msats} msats")
             return None
 
-        # Étape 2 : demander l'invoice
         callback = lnurl_data["callback"]
-        invoice_resp = requests.get(
+        invoice_data = http_get(
             callback,
             params={"amount": amount_msats, "comment": memo},
-            timeout=10
+            timeout=10,
+            tag=TAG
         )
-        invoice_resp.raise_for_status()
-        invoice_data = invoice_resp.json()
 
-        return invoice_data.get("pr")  # payment request (invoice)
+        if not invoice_data:
+            return None
+
+        return invoice_data.get("pr")
 
     except Exception as e:
         print(f"[LNBITS] Erreur résolution Lightning Address : {e}")
@@ -169,33 +160,24 @@ def _resolve_lightning_address(lightning_address, amount_sats, memo):
 
 
 def get_wallet_balance():
-    """
-    Retourne le solde du wallet bot en satoshis.
-    Utile pour vérifier qu'on a assez avant d'envoyer.
-    """
-    try:
-        response = requests.get(
-            f"{LNBITS_URL}/api/v1/wallet",
-            headers=HEADERS,
-            timeout=10
-        )
-        response.raise_for_status()
-        data = response.json()
+    """Retourne le solde du wallet bot en satoshis."""
+    data = http_get(
+        f"{LNBITS_URL}/api/v1/wallet",
+        headers=HEADERS,
+        timeout=10,
+        tag=TAG
+    )
 
-        balance_sats = data["balance"] // 1000  # msat → sats
-        print(f"[LNBITS] Solde wallet : {balance_sats} sats")
-        return balance_sats
-
-    except requests.exceptions.RequestException as e:
-        print(f"[LNBITS] Erreur récupération solde : {e}")
+    if not data:
         return None
+
+    balance_sats = data["balance"] // 1000
+    print(f"[LNBITS] Solde wallet : {balance_sats} sats")
+    return balance_sats
 
 
 def test_connection():
-    """
-    Teste la connexion à LNbits.
-    Retourne True si OK, False sinon.
-    """
+    """Teste la connexion à LNbits. Retourne True si OK, False sinon."""
     balance = get_wallet_balance()
     if balance is not None:
         print(f"[LNBITS] Connexion OK ✅ — solde : {balance} sats")

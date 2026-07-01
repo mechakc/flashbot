@@ -16,6 +16,7 @@ from messages import (
     msg_distribution, msg_payout_recu, msg_tontine_terminee,
     msg_paiement_recu_perso, msg_paiement_recu_autres
 )
+from utils import notify_members, get_webhook_url
 
 TIMEZONE = pytz.timezone("Africa/Porto-Novo")
 scheduler = BackgroundScheduler(timezone=TIMEZONE)
@@ -146,7 +147,6 @@ def _start_round(tontine_id, round_number):
     3. Envoie l'invoice à chaque membre par DM
     """
     from lnbits import create_invoice
-    import os
 
     tontine = get_tontine_by_id(tontine_id)
     members = get_members(tontine_id)
@@ -175,8 +175,7 @@ def _start_round(tontine_id, round_number):
 
     update_tontine(tontine_id, current_round=round_number)
 
-    base_url = os.getenv("BASE_URL", "http://localhost:5000")
-    webhook_url = f"{base_url}/lnbits/webhook"
+    webhook_url = get_webhook_url()
 
     print(f"[SCHEDULER] Démarrage Tour {round_number}/{total_rounds} — {tontine['name']}")
 
@@ -257,12 +256,10 @@ def _regenerate_orphaned_invoice(tontine, current_round, payment):
     Régénère une invoice fraîche pour un paiement dont l'ancienne invoice
     n'existe plus côté LNbits (clé API/wallet changée, instance réinitialisée, etc.).
     """
-    import os
     from lnbits import create_invoice
     from database import update_payment
 
-    base_url = os.getenv("BASE_URL", "http://localhost:5000")
-    webhook_url = f"{base_url}/lnbits/webhook"
+    webhook_url = get_webhook_url()
     memo = f"TontineBot {tontine['name']} Tour {current_round['round_number']} (renouvelée)"
 
     invoice_data = create_invoice(
@@ -306,20 +303,15 @@ def _confirm_payment(tontine_id, current_round, payment):
     total = len(members)
     round_number = current_round["round_number"]
 
-    for member in members:
+    def _payment_msg(member):
         if member["whatsapp_number"] == payment["whatsapp_number"]:
-            send_message(
-                member["whatsapp_number"],
-                msg_paiement_recu_perso(tontine["name"], round_number, paid_count, total)
-            )
-        else:
-            send_message(
-                member["whatsapp_number"],
-                msg_paiement_recu_autres(
-                    tontine["name"], round_number, paid_count, total,
-                    payment["whatsapp_number"]
-                )
-            )
+            return msg_paiement_recu_perso(tontine["name"], round_number, paid_count, total)
+        return msg_paiement_recu_autres(
+            tontine["name"], round_number, paid_count, total,
+            payment["whatsapp_number"]
+        )
+
+    notify_members(members, _payment_msg)
 
     if paid_count >= total:
         _complete_round(tontine_id, current_round)
@@ -338,11 +330,10 @@ def _complete_round(tontine_id, current_round):
         completed_at=datetime.now(TIMEZONE).isoformat()
     )
 
-    for member in members:
-        send_message(
-            member["whatsapp_number"],
-            msg_round_complet(tontine["name"], round_number, total_rounds)
-        )
+    notify_members(
+        members,
+        lambda m: msg_round_complet(tontine["name"], round_number, total_rounds)
+    )
 
     print(f"[SCHEDULER] Tour {round_number}/{total_rounds} complété ✅")
 
@@ -370,11 +361,10 @@ def _distribute_funds(tontine_id):
 
     print(f"[SCHEDULER] Distribution — {tontine['name']} — {total_per_member} sats/membre")
 
-    for member in members:
-        send_message(
-            member["whatsapp_number"],
-            msg_distribution(tontine["name"], amount_sats, nb_members)
-        )
+    notify_members(
+        members,
+        lambda m: msg_distribution(tontine["name"], amount_sats, nb_members)
+    )
 
     for member in members:
         result = send_payment(
@@ -397,8 +387,7 @@ def _distribute_funds(tontine_id):
 
     update_tontine(tontine_id, status="completed")
 
-    for member in members:
-        send_message(member["whatsapp_number"], msg_tontine_terminee(tontine["name"]))
+    notify_members(members, lambda m: msg_tontine_terminee(tontine["name"]))
 
     print(f"[SCHEDULER] Distribution terminée ✅")
 
@@ -417,14 +406,15 @@ def send_payment_reminders():
             continue
 
         pending = get_pending_payments_in_round(current_round["id"])
-        for payment in pending:
-            send_message(
-                payment["whatsapp_number"],
-                msg_rappel_paiement(
-                    tontine["name"],
-                    current_round["round_number"],
-                    tontine["amount_sats"],
-                    payment["invoice"]
-                )
+
+        def _reminder_msg(payment):
+            return msg_rappel_paiement(
+                tontine["name"],
+                current_round["round_number"],
+                tontine["amount_sats"],
+                payment["invoice"]
             )
+
+        for payment in pending:
+            send_message(payment["whatsapp_number"], _reminder_msg(payment))
             print(f"[SCHEDULER] Rappel → {payment['whatsapp_number']}")
